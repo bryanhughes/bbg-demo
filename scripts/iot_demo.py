@@ -21,7 +21,9 @@ if __name__=="__main__":
         humidity, temperature = grove_dht.read()
         
         grove_oled.oled_setTextXY(0,0)
-        grove_oled.oled_putString('Temp={0:0.1f}*  Humidity={1:0.1f}%'.format(temperature, humidity))
+        grove_oled.oled_putString('Temp:{0:0.1f} C'.format(temperature))
+        grove_oled.oled_setTextXY(1,0)
+        grove_oled.oled_putString('Humidity={0:0.1f} %'.format(humidity))
         grove_oled.oled_setTextXY(5,0)
         grove_oled.oled_putString("SpaceTime")
 
