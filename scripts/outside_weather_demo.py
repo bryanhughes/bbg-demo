@@ -5,8 +5,8 @@
 import time
 import grove_oled
 import pyowm
-APIKey = 'XXXXXXXXXXXXXXXXXXXXXXXXXX'
-placeName = 'Toronto,CA' #change this to your city name
+APIKey = '3f2c9aa5816be66d085f6e2eb5bd67b7'
+placeName = 'San Francisco' #change this to your city name
 
 owm = pyowm.OWM(APIKey)
 
