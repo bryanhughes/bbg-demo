@@ -36,7 +36,7 @@ import time
 import math
 
 
-Oled = Adafruit_I2C(0x3c)
+Oled = Adafruit_I2C(0x3c, 2)
 Command_Mode=0x80
 Data_mode=0x40
 
@@ -252,6 +252,7 @@ def oled_putString(String):
 if __name__=="__main__":
     oled_init()
     oled_setNormalDisplay()
+    oled_clearDisplay()
     oled_setTextXY(0,0)
     oled_putString("Hello")
     time.sleep(10)
