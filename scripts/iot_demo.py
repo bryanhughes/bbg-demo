@@ -33,7 +33,7 @@ if __name__=="__main__":
 
         # We will open the file and overwrite it on every write...
         file = open(FILENAME, "w")
-        file.write('{0:0.1f},{1:0.1f},{2:0d}'.format(temperature, humidity, time.time()))
+        file.write('{0:0.1f},{1:0.1f},{2:0d}'.format(temperature, humidity, int(time.time())))
 
         time.sleep(2)
 
