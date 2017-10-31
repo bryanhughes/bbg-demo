@@ -12,10 +12,11 @@ if __name__=="__main__":
 
     print('Starting up...')
 
-    for x in range(0, 5):
+    for x in range(0, 3):
         rgb_led.setColorRGB(0, 255, 0, 0)
         rgb_led.setColorRGB(0, 0, 255, 0)
         rgb_led.setColorRGB(0, 0, 0, 255)
+        time.sleep(.5)
 
     time.sleep(1)
 
