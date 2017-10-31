@@ -7,6 +7,11 @@ THRESHOLD_TEMPERATURE = 22.0
 
 if __name__=="__main__":
     rgb_led = grove_led.ChainableLED(grove_led.CLK_PIN, grove_led.DATA_PIN, grove_led.NUMBER_OF_LEDS)
+    rgb_led.setColorRGB(0, 255, 255, 255)
+
+    print('Starting up...')
+
+    time.sleep(1)
 
     grove_oled.oled_init()
     grove_oled.oled_setNormalDisplay()
@@ -19,6 +24,8 @@ if __name__=="__main__":
             rgb_led.setColorRGB(0, 255, 0, 0)
         else :
             rgb_led.setColorRGB(0, 0, 0, 255)
+
+	time.sleep(2)
 
         grove_oled.oled_setTextXY(0,0)
         grove_oled.oled_putString('Temp:{0:0.1f}C'.format(temperature))
