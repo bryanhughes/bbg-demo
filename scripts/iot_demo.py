@@ -4,12 +4,16 @@ import grove_oled
 import grove_led
 
 THRESHOLD_TEMPERATURE = 22.0
+FILENAME = 'tmp/output.dat'
 
 if __name__=="__main__":
     rgb_led = grove_led.ChainableLED(grove_led.CLK_PIN, grove_led.DATA_PIN, grove_led.NUMBER_OF_LEDS)
     rgb_led.setColorRGB(0, 255, 255, 255)
 
     print('Starting up...')
+
+    for x in range(0, 255):
+        rgb_led.setColorRGB(0, 0, 0, x)
 
     time.sleep(1)
 
@@ -22,10 +26,14 @@ if __name__=="__main__":
 
         if temperature >= THRESHOLD_TEMPERATURE :
             rgb_led.setColorRGB(0, 255, 0, 0)
-        else :
+        else:
             rgb_led.setColorRGB(0, 0, 0, 255)
 
-	time.sleep(2)
+        # We will open the file and overwrite it on every write...
+        file = open(FILENAME, 'w')
+        file.write('{0:0.1f},{1:0.1f},{2:0d}'.format(temperature, humidity, time.time()))
+
+        time.sleep(2)
 
         grove_oled.oled_setTextXY(0,0)
         grove_oled.oled_putString('Temp:{0:0.1f}C'.format(temperature))

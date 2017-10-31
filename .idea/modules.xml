@@ -2,7 +2,9 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/bbg-demo.iml" filepath="$PROJECT_DIR$/.idea/bbg-demo.iml" />
+      <module fileurl="file://$PROJECT_DIR$/bbg-demo.iml" filepath="$PROJECT_DIR$/bbg-demo.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/bbg-demo_main.iml" filepath="$PROJECT_DIR$/.idea/modules/bbg-demo_main.iml" group="bbg-demo" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/bbg-demo_test.iml" filepath="$PROJECT_DIR$/.idea/modules/bbg-demo_test.iml" group="bbg-demo" />
     </modules>
   </component>
 </project>
