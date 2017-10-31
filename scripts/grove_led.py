@@ -129,9 +129,9 @@ class ChainableLED():
 # Note: Use P9_22(UART2_RXD) and P9_21(UART2_TXD) as GPIO.
 # Connect the Grove - Chainable RGB LED to UART Grove port of Beaglebone Green.
 if __name__ == "__main__":
-    print_sti()
-
     rgb_led = ChainableLED(CLK_PIN, DATA_PIN, NUMBER_OF_LEDS)
+
+    print_sti()
 
     while True:
         # The first parameter: NUMBER_OF_LEDS - 1; Other parameters: the RGB values.
