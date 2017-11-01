@@ -18,8 +18,6 @@
 package com.spacetimeinsight.example.bbgdemo;
 
 import java.io.*;
-import java.text.DateFormat;
-import java.util.Date;
 import java.util.logging.Logger;
 
 /**
@@ -43,6 +41,7 @@ public class IOBridge {
     SensorData getSensorData() {
         SensorData sd = new SensorData();
         String sensorData = readSensor(SENSOR_FILENAME);
+        LOGGER.info("sensor data = " + sensorData);
         if ( sensorData != null ) {
             String[] parts = sensorData.split(",");
             if ( parts.length == 3 ) {

@@ -28,7 +28,6 @@ import com.spacetimeinsight.nucleuslib.types.DeviceType;
 import com.spacetimeinsight.nucleuslib.types.HealthType;
 import com.spacetimeinsight.nucleuslib.types.OperationStatus;
 import com.spacetimeinsight.protobuf.nano.EnvDataProto;
-import org.pmw.tinylog.Logger;
 
 import javax.xml.bind.DatatypeConverter;
 import java.io.File;
@@ -42,12 +41,16 @@ import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
 
 /**
  * Demonstration Driver
  */
 public class Driver implements NucleusClientListener
 {
+    private static final String LOG_TAG = Driver.class.getName();
+    private static final Logger LOGGER = Logger.getLogger(LOG_TAG);
+
     private Driver() {
         Properties localProperties = loadProperties();
         if ( localProperties == null ) {
@@ -97,7 +100,7 @@ public class Driver implements NucleusClientListener
         manufacturer = localProperties.getProperty("manufacturer");
         serialNumber = localProperties.getProperty("serialNumber");
 
-        Logger.info("Using the following properties:" +
+        LOGGER.info("Using the following properties:" +
                     "\n  Screen Name:   " + screenName +
                     "\n  Location:      " + myLocation +
                     "\n  Serial Number: " + serialNumber);
@@ -117,20 +120,20 @@ public class Driver implements NucleusClientListener
     }
 
     private void joinOrCreateChannel(final String channelName, final String password) {
-        Logger.info("Find channel by: " + channelName + ", password: " + ((password != null) ? password : ""));
+        LOGGER.info("Find channel by: " + channelName + ", password: " + ((password != null) ? password : ""));
         final ChannelService channelService = nucleusClient.getChannelService();
         channelService.findChannelByName(channelName, password, new ChannelFindByNameResponseHandler() {
 
             @Override
             public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                Logger.info("Failed to find by name. " + operationStatus + ", statusCode = " +
+                LOGGER.info("Failed to find by name. " + operationStatus + ", statusCode = " +
                             statusCode + ", errorMessage = " + errorMessage);
                 System.exit(-1);
             }
 
             @Override
             public void onSuccess(final String channelRef) {
-                Logger.info("Found channel by name. channelRef = " + channelRef);
+                LOGGER.info("Found channel by name. channelRef = " + channelRef);
 
                 if ( channelRef == null ) {
                     createChannel(channelName, password);
@@ -139,7 +142,7 @@ public class Driver implements NucleusClientListener
                     try {
                         joinChannel(channelRef);
                     } catch ( NucleusException e ) {
-                        Logger.error("Failed to join channel. channelRef = " + channelRef);
+                        LOGGER.severe("Failed to join channel. channelRef = " + channelRef);
                         e.printStackTrace();
                     }
                 }
@@ -156,7 +159,7 @@ public class Driver implements NucleusClientListener
                     public void onSuccess(String channelRef) {
                         // Creating a channel automatically joins you to it, but does not automatically switch
                         // you into it.
-                        Logger.info("Successfully created channel. channelRef = " + channelRef);
+                        LOGGER.info("Successfully created channel. channelRef = " + channelRef);
                         channelService.switchChannel(channelRef, new GeneralResponseHandler() {
                             @Override
                             public void onSuccess() {
@@ -165,7 +168,7 @@ public class Driver implements NucleusClientListener
 
                             @Override
                             public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                                Logger.info("Failed to create channel. " + operationStatus + ", statusCode = " +
+                                LOGGER.info("Failed to create channel. " + operationStatus + ", statusCode = " +
                                             statusCode + ", errorMessage = " + errorMessage);
                                 System.exit(-1);
                             }
@@ -174,7 +177,7 @@ public class Driver implements NucleusClientListener
 
                     @Override
                     public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                        Logger.info("Failed to create channel. " + operationStatus + ", statusCode = " +
+                        LOGGER.info("Failed to create channel. " + operationStatus + ", statusCode = " +
                                     statusCode + ", errorMessage = " + errorMessage);
                         System.exit(-1);
                     }
@@ -186,7 +189,7 @@ public class Driver implements NucleusClientListener
         channelService.joinChannel(channelRef, new ChannelJoinResponseHandler() {
             @Override
             public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                Logger.info("Failed to join channel. channelRef=" + channelRef +
+                LOGGER.info("Failed to join channel. channelRef=" + channelRef +
                             ", " + operationStatus + ", statusCode = " +
                             statusCode + ", errorMessage = " + errorMessage);
                 System.exit(-1);
@@ -194,7 +197,7 @@ public class Driver implements NucleusClientListener
 
             @Override
             public void onSuccess(final String channelRef, List<TopicOffset> offsets) {
-                Logger.info("joinChannel.onSuccess");
+                LOGGER.info("joinChannel.onSuccess");
                 channelService.switchChannel(channelRef, new GeneralResponseHandler() {
                     @Override
                     public void onSuccess() {
@@ -203,7 +206,7 @@ public class Driver implements NucleusClientListener
 
                     @Override
                     public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                        Logger.info("Failed to create channel. " + operationStatus + ", statusCode = " +
+                        LOGGER.info("Failed to create channel. " + operationStatus + ", statusCode = " +
                                     statusCode + ", errorMessage = " + errorMessage);
                         System.exit(-1);
                     }
@@ -225,22 +228,22 @@ public class Driver implements NucleusClientListener
                     deviceService.setProfile(new GeneralResponseHandler() {
                         @Override
                         public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                            Logger.error("Failed to update device profile. (" + statusCode + "), " + operationStatus + ", " + errorMessage);
+                            LOGGER.severe("Failed to update device profile. (" + statusCode + "), " + operationStatus + ", " + errorMessage);
                         }
 
                         @Override
                         public void onSuccess() {
-                            Logger.info("Successfully updated profile!");
+                            LOGGER.info("Successfully updated profile!");
                         }
                     });
                 }
-                Logger.info("startSession.onSuccess:" + activeMemberships.size());
+                LOGGER.info("startSession.onSuccess:" + activeMemberships.size());
                 joinOrCreateChannel(channelName, "");
             }
 
             @Override
             public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                Logger.info("Failed to start device session. " + operationStatus + ", statusCode = " +
+                LOGGER.info("Failed to start device session. " + operationStatus + ", statusCode = " +
                             statusCode + ", errorMessage = " + errorMessage);
                 System.exit(-1);
             }
@@ -256,15 +259,16 @@ public class Driver implements NucleusClientListener
         EnvDataProto.EnvData envDataProto = envData.toProtoBuffer();
         DeviceService deviceService = nucleusClient.getDeviceService();
         Datapoint datapoint = deviceService.newDatapoint("weather", 0, "EnvData", EnvDataProto.EnvData.toByteArray(envDataProto));
+        LOGGER.info("<<< SENDING DATAPOINT : " + envData);
         deviceService.setDatapoint(datapoint, new DeviceSetDatapointResponseHandler() {
             @Override
             public void onSuccess(Datapoint updatedDatapoint) {
-                Logger.info(">>> Successfully set sensor data: "  + envData.toString());
+                LOGGER.info(">>> Successfully set sensor data: "  + envData.toString());
             }
 
             @Override
             public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                Logger.error("FAILED to set datapoint. operationStatus = " + operationStatus +
+                LOGGER.severe("FAILED to set datapoint. operationStatus = " + operationStatus +
                               ", statusCode = " + statusCode +
                               ", errorMessage = " + errorMessage);
             }
@@ -293,12 +297,12 @@ public class Driver implements NucleusClientListener
         device.setCurrentLocation(myLocation, new DeviceSetDatapointResponseHandler() {
             @Override
             public void onSuccess(Datapoint updatedDatapoint) {
-                Logger.info("Successfully set my location to: " + myLocation);
+                LOGGER.info("Successfully set my location to: " + myLocation);
             }
 
             @Override
             public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                Logger.error("FAILED TO SET LOCATION. (" + statusCode + "), " + operationStatus + ", " + errorMessage);
+                LOGGER.severe("FAILED TO SET LOCATION. (" + statusCode + "), " + operationStatus + ", " + errorMessage);
             }
         });
 
@@ -311,24 +315,24 @@ public class Driver implements NucleusClientListener
             }
             catch( Exception e ) {
                 e.printStackTrace();
-                Logger.error("Caught exception: " + e.getMessage());
+                LOGGER.severe("Caught exception: " + e.getMessage());
             }
         };
-        scheduler.scheduleAtFixedRate(timer, 1, 1, TimeUnit.MINUTES);
+        scheduler.scheduleAtFixedRate(timer, 0, 1, TimeUnit.SECONDS);
 
         // Now block
 
-        Logger.info("Exiting!");
+        LOGGER.info("Exiting!");
     }
 
     private void renewSession()  {
-        Logger.info("Renewing session...");
+        LOGGER.info("Renewing session...");
         DeviceService deviceService = nucleusClient.getDeviceService();
         try {
             deviceService.renewSession(new DeviceSessionResponseHandler() {
                 @Override
                 public void onSuccess(boolean needsProfile, List<String> activeMemberships) {
-                    Logger.info("Successfully renewed device session.");
+                    LOGGER.info("Successfully renewed device session.");
                 }
 
                 @Override
@@ -342,7 +346,7 @@ public class Driver implements NucleusClientListener
     }
 
     public static void main(String[] args) throws Exception {
-        Logger.info("Starting up weather station...");
+        LOGGER.info("Starting up weather station...");
         Driver driver = new Driver();
         driver.execute();
     }
@@ -446,7 +450,7 @@ public class Driver implements NucleusClientListener
 
     @Override
     public void handleRequestError(String command, OperationStatus operationStatus, int statusCode, String errorMessage) {
-        Logger.error("Handling request error. Command = " + command +
+        LOGGER.severe("Handling request error. Command = " + command +
                       ", operationStatus = " + operationStatus.toString() +
                       ", statusCode = " + statusCode +
                       ", errorMessage = " + errorMessage);
@@ -455,7 +459,7 @@ public class Driver implements NucleusClientListener
             renewSession();
         }
         else {
-            Logger.error("Handling request error. " + command + " (" + statusCode + ") " + errorMessage);
+            LOGGER.severe("Handling request error. " + command + " (" + statusCode + ") " + errorMessage);
         }
     }
 
@@ -466,7 +470,7 @@ public class Driver implements NucleusClientListener
 
     @Override
     public void onError(int errorNo, String errorMessage) {
-        Logger.error("Handling error. errorNo = " + errorNo + ", errorMessage = " + errorMessage);
+        LOGGER.severe("Handling error. errorNo = " + errorNo + ", errorMessage = " + errorMessage);
     }
 
     @Override
