@@ -248,21 +248,10 @@ public class Driver implements NucleusClientListener
     }
 
     private void sendMessage() {
-        int now = (int) (System.currentTimeMillis() / 1000);
-        final WeatherReader weatherReader = new WeatherReader();
-        EnvData envData;
-        if( weatherReader.fileTest() ) {
-            Logger.info("weather sensors available");
-            envData = new EnvData(now,
-                                  weatherReader.getTemperature(),
-                                  weatherReader.getPressure(),
-                                  weatherReader.getHumidity(),
-                                  weatherReader.getLux());
-        }
-        else {
-            Logger.info("weather sensors not available");
-            envData = new EnvData(now, -1, -1, -1, -1);
-        }
+        final IOBridge ioBridge = new IOBridge();
+        com.spacetimeinsight.example.bbgdemo.IOBridge.SensorData sensorData = ioBridge.getSensorData();
+
+        EnvData envData = new EnvData(sensorData.timestamp, sensorData.temperature, 0, sensorData.humidity, 0);
 
         EnvDataProto.EnvData envDataProto = envData.toProtoBuffer();
         DeviceService deviceService = nucleusClient.getDeviceService();
@@ -270,8 +259,7 @@ public class Driver implements NucleusClientListener
         deviceService.setDatapoint(datapoint, new DeviceSetDatapointResponseHandler() {
             @Override
             public void onSuccess(Datapoint updatedDatapoint) {
-                Logger.info("Successfully set weather sensor data.");
-                Logger.info(weatherReader.getMessage());
+                Logger.info(">>> Successfully set sensor data: "  + envData.toString());
             }
 
             @Override
@@ -316,20 +304,14 @@ public class Driver implements NucleusClientListener
 
         startSession();
 
-        final LightControl lightControl = new LightControl();
-
         // Create our scheduler...
-        final Runnable timer = new Runnable() {
-            public void run() {
-                try {
-                    lightControl.setLed(true);
-                    sendMessage();
-                    lightControl.setLed(false);
-                }
-                catch( Exception e ) {
-                    e.printStackTrace();
-                    Logger.error("Caught exception: " + e.getMessage());
-                }
+        final Runnable timer = () -> {
+            try {
+                sendMessage();
+            }
+            catch( Exception e ) {
+                e.printStackTrace();
+                Logger.error("Caught exception: " + e.getMessage());
             }
         };
         scheduler.scheduleAtFixedRate(timer, 1, 1, TimeUnit.MINUTES);
