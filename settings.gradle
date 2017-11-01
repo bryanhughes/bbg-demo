@@ -1,0 +1,3 @@
+rootProject.name = 'bbg-demo'
+include 'java:bbg-demo'
+findProject(':java:bbg-demo')?.name = 'bbg-demo'
