@@ -1,4 +1,11 @@
+release/
+build/
+out/
+
+local.properties
+
 # Compiled class file
+*.git
 *.class
 
 # Log file
@@ -11,7 +18,6 @@
 .mtj.tmp/
 
 # Package Files #
-*.jar
 *.war
 *.ear
 *.zip
