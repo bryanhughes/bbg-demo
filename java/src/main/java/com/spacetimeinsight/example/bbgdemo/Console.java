@@ -30,7 +30,7 @@ public class Console implements NucleusClientListener {
 
     public static void main(String[] args) throws Exception {
         LOGGER.info("Starting up beaglebone demo console...");
-        String screenName = (args[0] == null ? "Someone" : args[0]);
+        String screenName = (args.length == 0 ? "Someone" : args[0]);
         Console console = new Console(screenName);
         console.run();
     }

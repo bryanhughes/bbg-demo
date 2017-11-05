@@ -80,7 +80,9 @@ public class IOBridge {
             }
         }
         catch ( IOException exception ) {
-            exception.printStackTrace();
+            if ( !(exception instanceof java.io.FileNotFoundException) ) {
+                exception.printStackTrace();
+            }
         }
         finally {
             try {

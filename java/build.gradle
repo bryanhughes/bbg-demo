@@ -55,6 +55,7 @@ task release(type: Zip, dependsOn: 'prepareRelease') {
     from file("./tinylog.properties")
     from file("./README.md")
     from file("./run_bbg.sh")
+    from file("./run_console.sh")
     from fileTree(dir: 'scripts', include: '**/*')
 
     // Create output filename.

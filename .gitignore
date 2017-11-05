@@ -1,3 +1,5 @@
+.gradle/*
+serial.dat
 release/
 build/
 out/
