@@ -1,7 +1,0 @@
--classpath '/Users/bryan/git/bbg-demo/build/classes/java/main:/Users/bryan/git/bbg-demo/build/resources/main:/Users/bryan/git/bbg-demo/libs/nucleus-java-sdk-2.0.3.jar:/Users/bryan/git/bbg-demo/libs/tinylog-1.2.jar:/Users/bryan/.gradle/caches/modules-2/files-2.1/org.tinylog/tinylog/1.2/931d979739ff48bf76a553728146927de724b4c3/tinylog-1.2.jar'
--d '/Users/bryan/git/bbg-demo/build/docs/javadoc'
--doctitle 'bbg-demo 1.0 API'
--quiet 
--windowtitle 'bbg-demo 1.0 API'
-'/Users/bryan/git/bbg-demo/src/main/java/com/spacetimeinsight/example/bbgdemo/Driver.java'
-'/Users/bryan/git/bbg-demo/src/main/java/com/spacetimeinsight/example/bbgdemo/IOBridge.java'

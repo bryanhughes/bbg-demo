@@ -1,0 +1,79 @@
+group 'com.spacetimeinsight'
+version '1.0'
+
+apply plugin: 'java'
+
+sourceCompatibility = JavaVersion.VERSION_1_8
+targetCompatibility = JavaVersion.VERSION_1_8
+
+repositories {
+    mavenCentral()
+    flatDir {
+        dirs '../libs'
+    }
+}
+
+configurations {
+    jar.archiveName = 'bbg-demo-1.0.jar'
+}
+
+dependencies {
+    testCompile 'junit:junit:4.12'
+    compile fileTree(include: ['*.jar'], dir: '../libs')
+    compile fileTree(include: ['*.jar'], dir: 'libs')
+    compile 'org.tinylog:tinylog:1.2'
+}
+
+jar {
+    from {
+        (configurations.runtime).collect {
+            it.isDirectory() ? it : zipTree(it)
+        }
+    }
+    manifest {
+        attributes("Main-Class": "com.spacetimeinsight.example.bbgdemo.Launcher" )
+    }
+}
+
+
+processResources{
+    exclude '*.log'
+    exclude 'local.properties'
+}
+
+task prepareRelease {
+    doLast {
+        println "Creating release - ${project.name}"
+        delete fileTree(dir: "release")
+    }
+}
+
+task release(type: Zip, dependsOn: 'prepareRelease') {
+    from fileTree(dir: 'build/libs', include: '**/*')
+    from fileTree(dir: '../libs', include: '**/*')
+    from file("./local-template.properties")
+    from file("./tinylog.properties")
+    from file("./README.md")
+    from file("./run_bbg.sh")
+    from fileTree(dir: 'scripts', include: '**/*')
+
+    // Create output filename.
+    baseName = 'bbg-demo'
+    extension = 'zip'
+    version = '1.0'
+    destinationDir = file('release')
+}
+task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
+artifacts {
+    archives sourcesJar
+    archives javadocJar
+}

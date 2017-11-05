@@ -5,8 +5,6 @@
       <module fileurl="file://$PROJECT_DIR$/bbg-demo.iml" filepath="$PROJECT_DIR$/bbg-demo.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/bbg-demo_main.iml" filepath="$PROJECT_DIR$/.idea/modules/bbg-demo_main.iml" group="bbg-demo" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/bbg-demo_test.iml" filepath="$PROJECT_DIR$/.idea/modules/bbg-demo_test.iml" group="bbg-demo" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/java/java.iml" filepath="$PROJECT_DIR$/.idea/modules/java/java.iml" group="java" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/java/bbg-demo/java-bbg-demo.iml" filepath="$PROJECT_DIR$/.idea/modules/java/bbg-demo/java-bbg-demo.iml" group="java/bbg-demo" />
     </modules>
   </component>
 </project>
