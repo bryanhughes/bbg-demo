@@ -29,8 +29,7 @@ import com.spacetimeinsight.protobuf.nano.EnvDataProto;
 import javax.xml.bind.DatatypeConverter;
 import java.io.*;
 import java.net.URL;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -163,7 +162,13 @@ public class BeagleBone implements NucleusClientListener
 
     private void joinChannel(final String channelRef) throws NucleusException {
         final ChannelService channelService = Driver.nucleusClient.getChannelService();
-        channelService.joinChannel(channelRef, new ChannelJoinResponseHandler() {
+
+        Map<JoinOption, Object> joinOptions = new HashMap<>();
+        List<TopicOffset> offsets = new ArrayList<>();
+        offsets.add(new TopicOffset(channelRef, TopicType.EChannelMessage, -1, 1));
+        joinOptions.put(JoinOption.OFFSET_LIST, offsets);
+
+        channelService.joinChannel(channelRef, joinOptions, new ChannelJoinResponseHandler() {
             @Override
             public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
                 System.out.println("Failed to join channel. channelRef=" + channelRef +

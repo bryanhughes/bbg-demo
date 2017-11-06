@@ -62,7 +62,10 @@ if __name__=="__main__":
             os.remove(MESSAGE_FILENAME)
 
             grove_oled.oled_clearDisplay()
+            time.sleep(2)
+
             grove_oled.oled_setTextXY(0, 0)
+            grove_oled.oled_putString("           ")
             grove_oled.oled_putString(message)
             grove_oled.oled_setTextXY(1, 0)
             grove_oled.oled_putString("           ")
