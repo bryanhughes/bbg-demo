@@ -23,10 +23,7 @@ import com.spacetimeinsight.nucleuslib.core.ClientDevice;
 import com.spacetimeinsight.nucleuslib.core.NucleusFactory;
 import com.spacetimeinsight.nucleuslib.datamapped.*;
 import com.spacetimeinsight.nucleuslib.responsehandlers.*;
-import com.spacetimeinsight.nucleuslib.types.ChangeType;
-import com.spacetimeinsight.nucleuslib.types.DeviceType;
-import com.spacetimeinsight.nucleuslib.types.HealthType;
-import com.spacetimeinsight.nucleuslib.types.OperationStatus;
+import com.spacetimeinsight.nucleuslib.types.*;
 import com.spacetimeinsight.protobuf.nano.EnvDataProto;
 
 import javax.xml.bind.DatatypeConverter;
@@ -37,6 +34,9 @@ import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.LogManager;
 import java.util.logging.Logger;
 
 /**
@@ -44,14 +44,33 @@ import java.util.logging.Logger;
  */
 public class BeagleBone implements NucleusClientListener
 {
-    private static final String LOG_TAG = BeagleBone.class.getName();
-    private static final Logger LOGGER = Logger.getLogger(LOG_TAG);
-
-    private static String MESSAGES_FILENAME = "/tmp/messages.dat";
+    private static String MESSAGES_FILENAME = "/tmp/message.dat";
     private static String SENSOR_FILENAME = "/tmp/sensor.dat";
     private static String LED_FILENAME = "/tmp/led.dat";
 
-    protected BeagleBone() throws IOException {
+    protected BeagleBone(String[] args) throws IOException {
+
+        Level level = Level.INFO;
+        if ( (args.length > 1) && "-level".equals(args[0]) ) {
+            String l = args[1].toLowerCase();
+            System.out.println("Setting log level to " + l);
+            switch (l) {
+                case "off": level = Level.OFF; break;
+                case "severe": level = Level.SEVERE; break;
+                case "warning": level = Level.WARNING; break;
+                case "info": level = Level.INFO; break;
+                case "fine": level = Level.FINE; break;
+                case "finer": level = Level.FINER; break;
+                case "finest": level = Level.FINEST; break;
+                default: level = Level.INFO;
+            }
+        }
+
+        Logger rootLogger = LogManager.getLogManager().getLogger("");
+        rootLogger.setLevel(level);
+        for (Handler h : rootLogger.getHandlers()) {
+            h.setLevel(level);
+        }
 
         Runtime rt = Runtime.getRuntime();
         String[] commands = {"./show-serial.sh"};
@@ -68,36 +87,36 @@ public class BeagleBone implements NucleusClientListener
         Driver.osVersion = "8.7";
         Driver.screenName = stdInputStr;
 
-        LOGGER.info("Using the following properties:" +
+        System.out.println("Using the following properties:" +
                             "\n  Screen Name:   " + Driver.screenName +
                             "\n  Location:      " + Driver.myLocation +
                             "\n  Serial Number: " + Driver.serialNumber);
     }
 
-    private void joinOrCreateChannel(final String channelName, final String password) {
-        LOGGER.info("Find channel by: " + channelName + ", password: " + ((password != null) ? password : ""));
+    private void joinOrCreateChannel(final String channelName) {
+        System.out.println("Find channel by: " + channelName);
         final ChannelService channelService = Driver.nucleusClient.getChannelService();
-        channelService.findChannelByName(channelName, password, new ChannelFindByNameResponseHandler() {
+        channelService.findChannelByName(channelName, null, new ChannelFindByNameResponseHandler() {
 
             @Override
             public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                LOGGER.info("Failed to find by name. " + operationStatus + ", statusCode = " +
+                System.out.println("Failed to find by name. " + operationStatus + ", statusCode = " +
                             statusCode + ", errorMessage = " + errorMessage);
                 System.exit(-1);
             }
 
             @Override
             public void onSuccess(final String channelRef) {
-                LOGGER.info("Found channel by name. channelRef = " + channelRef);
+                System.out.println("Found channel by name. channelRef = " + channelRef);
 
                 if ( channelRef == null ) {
-                    createChannel(channelName, password);
+                    createChannel(channelName);
                 }
                 else {
                     try {
                         joinChannel(channelRef);
                     } catch ( NucleusException e ) {
-                        LOGGER.severe("Failed to join channel. channelRef = " + channelRef);
+                        System.out.println("Failed to join channel. channelRef = " + channelRef);
                         e.printStackTrace();
                     }
                 }
@@ -105,27 +124,28 @@ public class BeagleBone implements NucleusClientListener
         });
     }
 
-    private void createChannel(String channelName, String password) {
+    private void createChannel(String channelName) {
         final ChannelService channelService = Driver.nucleusClient.getChannelService();
         GeoCircle circle = new GeoCircle(Driver.myLocation.getLatitude(), Driver.myLocation.getLongitude(), 100);
-        channelService.createChannel(circle, 0, 0, channelName, password, "Site", false,
+        channelService.createChannel(circle, 0, 0, channelName, null, "Site", false,
                                      null, Driver.shortDescription, Driver.longDescription, new ChannelCreateResponseHandler() {
                     @Override
                     public void onSuccess(String channelRef) {
                         // Creating a channel automatically joins you to it, but does not automatically switch
                         // you into it.
-                        LOGGER.info("Successfully created channel. channelRef = " + channelRef);
+                        System.out.println("Successfully created channel. channelRef = " + channelRef);
                         channelService.switchChannel(channelRef, new GeneralResponseHandler() {
                             @Override
                             public void onSuccess() {
                                 // Now that we have our channel created, we want to enable polling on it so that we
                                 // can respond to any chat messages to display on our OLED
                                 Driver.nucleusClient.enablePolling(true);
+                                sendLoop();
                             }
 
                             @Override
                             public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                                LOGGER.info("Failed to create channel. " + operationStatus + ", statusCode = " +
+                                System.out.println("Failed to create channel. " + operationStatus + ", statusCode = " +
                                             statusCode + ", errorMessage = " + errorMessage);
                                 System.exit(-1);
                             }
@@ -134,7 +154,7 @@ public class BeagleBone implements NucleusClientListener
 
                     @Override
                     public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                        LOGGER.info("Failed to create channel. " + operationStatus + ", statusCode = " +
+                        System.out.println("Failed to create channel. " + operationStatus + ", statusCode = " +
                                     statusCode + ", errorMessage = " + errorMessage);
                         System.exit(-1);
                     }
@@ -146,26 +166,27 @@ public class BeagleBone implements NucleusClientListener
         channelService.joinChannel(channelRef, new ChannelJoinResponseHandler() {
             @Override
             public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                LOGGER.info("Failed to join channel. channelRef=" + channelRef +
-                            ", " + operationStatus + ", statusCode = " +
-                            statusCode + ", errorMessage = " + errorMessage);
+                System.out.println("Failed to join channel. channelRef=" + channelRef +
+                            " : " + operationStatus + " : statusCode = " +
+                            statusCode + " : errorMessage = " + errorMessage);
                 System.exit(-1);
             }
 
             @Override
             public void onSuccess(final String channelRef, List<TopicOffset> offsets) {
-                LOGGER.info("joinChannel.onSuccess");
+                System.out.println("joinChannel.onSuccess");
                 channelService.switchChannel(channelRef, new GeneralResponseHandler() {
                     @Override
                     public void onSuccess() {
                         // Now that we have our channel created, we want to enable polling on it so that we
                         // can respond to any chat messages to display on our OLED
                         Driver.nucleusClient.enablePolling(true);
+                        sendLoop();
                     }
 
                     @Override
                     public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                        LOGGER.info("Failed to create channel. " + operationStatus + ", statusCode = " +
+                        System.out.println("Failed to create channel. " + operationStatus + ", statusCode = " +
                                     statusCode + ", errorMessage = " + errorMessage);
                         System.exit(-1);
                     }
@@ -174,12 +195,25 @@ public class BeagleBone implements NucleusClientListener
         });
     }
 
+    private void sendLoop() {
+        final Runnable timer = () -> {
+            try {
+                sendData();
+            }
+            catch( Exception e ) {
+                e.printStackTrace();
+                System.out.println("Caught exception: " + e.getMessage());
+            }
+        };
+        scheduler.scheduleAtFixedRate(timer, 0, 1, TimeUnit.SECONDS);
+    }
+
     private void startSession() throws NucleusException {
         final DeviceService deviceService = Driver.nucleusClient.getDeviceService();
         deviceService.startSession(new DeviceSessionResponseHandler() {
             @Override
             public void onSuccess(boolean needsProfile, List<String> activeMemberships) {
-                LOGGER.info("startSession.onSuccess:" + activeMemberships.size());
+                System.out.println("startSession.onSuccess:" + activeMemberships.size());
 
                 if ( needsProfile ) {
                     ClientDevice clientDevice = Driver.nucleusClient.getClientDevice();
@@ -189,35 +223,24 @@ public class BeagleBone implements NucleusClientListener
                     deviceService.setProfile(new GeneralResponseHandler() {
                         @Override
                         public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                            LOGGER.severe("Failed to update device profile. (" + statusCode + "), " + operationStatus + ", " + errorMessage);
+                            System.out.println("Failed to update device profile. (" + statusCode + "), " + operationStatus + ", " + errorMessage);
                         }
 
                         @Override
                         public void onSuccess() {
-                            LOGGER.info("Successfully updated profile!");
+                            System.out.println("Successfully updated profile!");
                         }
                     });
                 }
 
                 // These are asynchronous calls, so they may or may not complete before the process moves onto the next
                 // lines of code.
-                joinOrCreateChannel(Driver.channelName, "");
-
-                final Runnable timer = () -> {
-                    try {
-                        sendData();
-                    }
-                    catch( Exception e ) {
-                        e.printStackTrace();
-                        LOGGER.severe("Caught exception: " + e.getMessage());
-                    }
-                };
-                scheduler.scheduleAtFixedRate(timer, 0, 1, TimeUnit.SECONDS);
+                joinOrCreateChannel(Driver.channelName);
             }
 
             @Override
             public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                LOGGER.info("Failed to start device session. " + operationStatus + ", statusCode = " +
+                System.out.println("Failed to start device session. " + operationStatus + ", statusCode = " +
                             statusCode + ", errorMessage = " + errorMessage);
                 System.exit(-1);
             }
@@ -233,16 +256,16 @@ public class BeagleBone implements NucleusClientListener
         EnvDataProto.EnvData envDataProto = envData.toProtoBuffer();
         DeviceService deviceService = Driver.nucleusClient.getDeviceService();
         Datapoint datapoint = deviceService.newDatapoint("weather", 0, "EnvData", EnvDataProto.EnvData.toByteArray(envDataProto));
-        LOGGER.info("<<< SENDING DATAPOINT : " + envData);
+        System.out.println("<<< SENDING DATAPOINT : " + envData);
         deviceService.setDatapoint(datapoint, new DeviceSetDatapointResponseHandler() {
             @Override
             public void onSuccess(Datapoint updatedDatapoint) {
-                LOGGER.info(">>> Successfully set sensor data: "  + envData.toString());
+                System.out.println(">>> Successfully set sensor data: "  + envData.toString());
             }
 
             @Override
             public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                LOGGER.severe("FAILED to set datapoint. operationStatus = " + operationStatus +
+                System.out.println("FAILED to set datapoint. operationStatus = " + operationStatus +
                               ", statusCode = " + statusCode +
                               ", errorMessage = " + errorMessage);
             }
@@ -271,28 +294,27 @@ public class BeagleBone implements NucleusClientListener
         device.setCurrentLocation(Driver.myLocation, new DeviceSetDatapointResponseHandler() {
             @Override
             public void onSuccess(Datapoint updatedDatapoint) {
-                LOGGER.info("Successfully set my location to: " + Driver.myLocation);
+                System.out.println("Successfully set my location to: " + Driver.myLocation);
             }
 
             @Override
             public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                LOGGER.severe("FAILED TO SET LOCATION. (" + statusCode + "), " + operationStatus + ", " + errorMessage);
+                System.out.println("FAILED TO SET LOCATION. (" + statusCode + "), " + operationStatus + ", " + errorMessage);
             }
         });
 
         startSession();
-
-        LOGGER.info("Exiting!");
+        System.out.println("Exiting!");
     }
 
     private void renewSession()  {
-        LOGGER.info("Renewing session...");
+        System.out.println("Renewing session...");
         DeviceService deviceService = Driver.nucleusClient.getDeviceService();
         try {
             deviceService.renewSession(new DeviceSessionResponseHandler() {
                 @Override
                 public void onSuccess(boolean needsProfile, List<String> activeMemberships) {
-                    LOGGER.info("Successfully renewed device session.");
+                    System.out.println("Successfully renewed device session.");
                 }
 
                 @Override
@@ -306,8 +328,8 @@ public class BeagleBone implements NucleusClientListener
     }
 
     public static void main(String[] args) throws Exception {
-        LOGGER.info("Starting up beaglebone green demo...");
-        BeagleBone beagleBone = new BeagleBone();
+        System.out.println("Starting up beaglebone green demo...");
+        BeagleBone beagleBone = new BeagleBone(args);
         beagleBone.execute();
     }
 
@@ -348,7 +370,7 @@ public class BeagleBone implements NucleusClientListener
 
     @Override
     public void handleRequestError(String command, OperationStatus operationStatus, int statusCode, String errorMessage) {
-        LOGGER.severe("Handling request error. Command = " + command +
+        System.out.println("Handling request error. Command = " + command +
                       ", operationStatus = " + operationStatus.toString() +
                       ", statusCode = " + statusCode +
                       ", errorMessage = " + errorMessage);
@@ -357,7 +379,7 @@ public class BeagleBone implements NucleusClientListener
             renewSession();
         }
         else {
-            LOGGER.severe("Handling request error. " + command + " (" + statusCode + ") " + errorMessage);
+            System.out.println("Handling request error. " + command + " (" + statusCode + ") " + errorMessage);
         }
     }
 
@@ -368,7 +390,7 @@ public class BeagleBone implements NucleusClientListener
 
     @Override
     public void onError(int errorNo, String errorMessage) {
-        LOGGER.severe("Handling error. errorNo = " + errorNo + ", errorMessage = " + errorMessage);
+        System.out.println("Handling error. errorNo = " + errorNo + ", errorMessage = " + errorMessage);
     }
 
     @Override
@@ -417,10 +439,16 @@ public class BeagleBone implements NucleusClientListener
         // device control is being handled by the Python scripts. We write our message to a shared file that the
         // scripts are listening to
 
+
         MimeMessage mimeMessage = channelMessage.getMimeMessage();
+        List<MimePart> parts = mimeMessage.getMimeParts();
+        MimePart part = parts.get(0);
+
+        String message = new String(part.getContent());
+        System.out.println(">>> Handling channel message " + message + " >> " + MESSAGES_FILENAME);
         try {
             FileWriter fileWriter = new FileWriter(MESSAGES_FILENAME);
-            fileWriter.write(mimeMessage.getContentString());
+            fileWriter.write(message);
             fileWriter.close();
         } catch (IOException e) {
             e.printStackTrace();

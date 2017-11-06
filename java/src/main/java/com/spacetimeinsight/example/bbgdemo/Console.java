@@ -14,35 +14,56 @@ import com.spacetimeinsight.nucleuslib.types.OperationStatus;
 import javax.xml.bind.DatatypeConverter;
 import java.io.*;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 import java.util.UUID;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.LogManager;
 import java.util.logging.Logger;
 
 public class Console implements NucleusClientListener {
     private static final String LOG_TAG = Console.class.getName();
     private static final Logger LOGGER = Logger.getLogger(LOG_TAG);
 
-    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-
     public static void main(String[] args) throws Exception {
         LOGGER.info("Starting up beaglebone demo console...");
-        String screenName = (args.length == 0 ? "Someone" : args[0]);
-        Console console = new Console(screenName);
+        Console console = new Console(args);
         console.run();
     }
 
-    private Console(String screenName) throws IOException {
+    private Console(String[] args) throws IOException {
+        Level level = Level.SEVERE;
+        if ( (args.length > 1) && "-level".equals(args[0]) ) {
+            String l = args[1].toLowerCase();
+            System.out.println("Setting log level to " + l);
+            switch (l) {
+                case "off": level = Level.OFF; break;
+                case "severe": level = Level.SEVERE; break;
+                case "warning": level = Level.WARNING; break;
+                case "info": level = Level.INFO; break;
+                case "fine": level = Level.FINE; break;
+                case "finer": level = Level.FINER; break;
+                case "finest": level = Level.FINEST; break;
+                default: level = Level.SEVERE;
+            }
+        }
+
+        Logger rootLogger = LogManager.getLogManager().getLogger("");
+        rootLogger.setLevel(level);
+        for (Handler h : rootLogger.getHandlers()) {
+            h.setLevel(level);
+        }
+
         // If we dont have a serial number, then generate a random UUID
-        String serialNo = null;
+        String serialNo;
         File f = new File("serial.dat");
         if( !f.exists() && !f.isDirectory()) {
             serialNo = UUID.randomUUID().toString();
             FileWriter fileWriter = new FileWriter("serial.dat");
             fileWriter.write(serialNo);
+            fileWriter.close();
         }
         else {
             BufferedReader bufferedReader = new BufferedReader(new FileReader(f));
@@ -55,7 +76,7 @@ public class Console implements NucleusClientListener {
         Driver.modelIdentifier = "MacBook";
         Driver.os = "macOS";
         Driver.osVersion = "10.12.6";
-        Driver.screenName = screenName;
+        Driver.screenName = "console";
 
         LOGGER.info("Using the following properties:" +
                             "\n  Screen Name:   " + Driver.screenName +
@@ -123,42 +144,26 @@ public class Console implements NucleusClientListener {
 
                 // These are asynchronous calls, so they may or may not complete before the process moves onto the next
                 // lines of code.
-                joinOrCreateChannel(Driver.channelName, "");
-
-                Scanner scanner = new Scanner(System.in);
-
-                final Runnable timer = () -> {
-                    try {
-                        System.out.print("Enter your message: ");
-
-                        String message = scanner.next();
-                        System.out.print("Sending message...");
-                    }
-                    catch( Exception e ) {
-                        e.printStackTrace();
-                        LOGGER.severe("Caught exception: " + e.getMessage());
-                    }
-                };
-                scheduler.scheduleAtFixedRate(timer, 0, 1, TimeUnit.SECONDS);
+                joinOrCreateChannel(Driver.channelName);
             }
 
             @Override
             public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                LOGGER.info("Failed to start device session. " + operationStatus + ", statusCode = " +
+                LOGGER.severe("Failed to start device session. " + operationStatus + ", statusCode = " +
                                     statusCode + ", errorMessage = " + errorMessage);
                 System.exit(-1);
             }
         });
     }
 
-    private void joinOrCreateChannel(final String channelName, final String password) {
-        LOGGER.info("Find channel by: " + channelName + ", password: " + ((password != null) ? password : ""));
+    private void joinOrCreateChannel(final String channelName) {
+        LOGGER.info("Find channel by: " + channelName);
         final ChannelService channelService = Driver.nucleusClient.getChannelService();
-        channelService.findChannelByName(channelName, password, new ChannelFindByNameResponseHandler() {
+        channelService.findChannelByName(channelName, null, new ChannelFindByNameResponseHandler() {
 
             @Override
             public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                LOGGER.info("Failed to find by name. " + operationStatus + ", statusCode = " +
+                LOGGER.severe("Failed to find by name. " + operationStatus + ", statusCode = " +
                                     statusCode + ", errorMessage = " + errorMessage);
                 System.exit(-1);
             }
@@ -168,7 +173,7 @@ public class Console implements NucleusClientListener {
                 LOGGER.info("Found channel by name. channelRef = " + channelRef);
 
                 if ( channelRef == null ) {
-                    createChannel(channelName, password);
+                    createChannel(channelName, null);
                 }
                 else {
                     try {
@@ -198,11 +203,12 @@ public class Console implements NucleusClientListener {
                                 // Now that we have our channel created, we want to enable polling on it so that we
                                 // can respond to any chat messages to display on our OLED
                                 Driver.nucleusClient.enablePolling(true);
+                                sendLoop(channelRef);
                             }
 
                             @Override
                             public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                                LOGGER.info("Failed to create channel. " + operationStatus + ", statusCode = " +
+                                LOGGER.severe("Failed to create channel. " + operationStatus + ", statusCode = " +
                                                     statusCode + ", errorMessage = " + errorMessage);
                                 System.exit(-1);
                             }
@@ -211,11 +217,38 @@ public class Console implements NucleusClientListener {
 
                     @Override
                     public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                        LOGGER.info("Failed to create channel. " + operationStatus + ", statusCode = " +
+                        LOGGER.severe("Failed to create channel. " + operationStatus + ", statusCode = " +
                                             statusCode + ", errorMessage = " + errorMessage);
                         System.exit(-1);
                     }
                 });
+    }
+
+    private void sendLoop(String channelRef) {
+        Scanner scanner = new Scanner(System.in);
+
+        // NOTE:
+        // This is a bad implementation and will ultimately cause a stack overflow.
+
+        ChannelService channelService = Driver.nucleusClient.getChannelService();
+        System.out.print("Enter your message: ");
+
+        String message = scanner.next();
+        List<MimePart> mimeParts = new ArrayList<>();
+        mimeParts.add(new MimePart("text/plain", "", message.getBytes()));
+        MimeMessage mimeMessage = new MimeMessage(mimeParts);
+        channelService.publish(channelRef, mimeMessage, new ChannelPublishMessageResponseHandler() {
+            @Override
+            public void onSuccess(long offset, long eventID) {
+                System.out.println("    > Message sent");
+                sendLoop(channelRef);
+            }
+
+            @Override
+            public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg) {
+                System.out.println("    > Failed to send message - (" + statusCode + ") " + errorMsg);
+            }
+        });
     }
 
     private void joinChannel(final String channelRef) throws NucleusException {
@@ -223,7 +256,7 @@ public class Console implements NucleusClientListener {
         channelService.joinChannel(channelRef, new ChannelJoinResponseHandler() {
             @Override
             public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                LOGGER.info("Failed to join channel. channelRef=" + channelRef +
+                LOGGER.severe("Failed to join channel. channelRef=" + channelRef +
                                     ", " + operationStatus + ", statusCode = " +
                                     statusCode + ", errorMessage = " + errorMessage);
                 System.exit(-1);
@@ -238,11 +271,12 @@ public class Console implements NucleusClientListener {
                         // Now that we have our channel created, we want to enable polling on it so that we
                         // can respond to any chat messages to display on our OLED
                         Driver.nucleusClient.enablePolling(true);
+                        sendLoop(channelRef);
                     }
 
                     @Override
                     public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                        LOGGER.info("Failed to create channel. " + operationStatus + ", statusCode = " +
+                        LOGGER.severe("Failed to create channel. " + operationStatus + ", statusCode = " +
                                             statusCode + ", errorMessage = " + errorMessage);
                         System.exit(-1);
                     }
