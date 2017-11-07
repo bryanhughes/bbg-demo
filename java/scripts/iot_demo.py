@@ -66,6 +66,7 @@ if __name__=="__main__":
 
             grove_oled.oled_setTextXY(0, 0)
             grove_oled.oled_putString("           ")
+            grove_oled.oled_setTextXY(0, 0)
             grove_oled.oled_putString(message)
             grove_oled.oled_setTextXY(1, 0)
             grove_oled.oled_putString("           ")
@@ -79,10 +80,13 @@ if __name__=="__main__":
             rgb_led.setColorRGB(0, 0, 0, 0)
         else:
             led_values = led_file.readline(1)
+            print('led_values = ' + led_values)
+            led_file.close()
+
             parts = [x.strip() for x in led_values.split(',')]
             if ( len(parts) == 3 ):
                 rgb_led.setColorRGB(0, parts[0], parts[1], parts[2])
 
         print('Temp={0:0.1f}*  Humidity={1:0.1f}%'.format(temperature, humidity))
 
-        time.sleep(1)
+        time.sleep(2)

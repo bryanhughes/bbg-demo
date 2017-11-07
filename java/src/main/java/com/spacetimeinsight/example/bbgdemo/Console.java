@@ -18,6 +18,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogManager;
@@ -27,10 +29,13 @@ public class Console implements NucleusClientListener {
     private static final String LOG_TAG = Console.class.getName();
     private static final Logger LOGGER = Logger.getLogger(LOG_TAG);
 
+    private ExecutorService executor;
+    private Scanner scanner;
+
     public static void main(String[] args) throws Exception {
         LOGGER.info("Starting up beaglebone demo console...");
         Console console = new Console(args);
-        console.run();
+        console.startSession();
     }
 
     private Console(String[] args) throws IOException {
@@ -56,6 +61,9 @@ public class Console implements NucleusClientListener {
             h.setLevel(level);
         }
 
+        scanner = new Scanner(System.in);
+        scanner.useDelimiter("\n");
+
         // If we dont have a serial number, then generate a random UUID
         String serialNo;
         File f = new File("serial.dat");
@@ -78,18 +86,18 @@ public class Console implements NucleusClientListener {
         Driver.osVersion = "10.12.6";
         Driver.screenName = "console";
 
-        LOGGER.info("Using the following properties:" +
-                            "\n  Screen Name:   " + Driver.screenName +
-                            "\n  Location:      " + Driver.myLocation +
-                            "\n  Serial Number: " + Driver.serialNumber);
-    }
-
-    private void run() throws NucleusException {
         String namespace = "com." + Driver.manufacturer + "." +
                 (Driver.serialNumber == null ? UUID.randomUUID().toString() : Driver.serialNumber);
 
         // Sadly, there is a bug in nucleus right now so all dashes need to be underbars
         String deviceID = UUID.nameUUIDFromBytes(namespace.getBytes()).toString().replaceAll("-", "_");
+
+        LOGGER.info("Using the following properties:" +
+                            "\n  Device ID:     " + deviceID +
+                            "\n  Screen Name:   " + Driver.screenName +
+                            "\n  Location:      " + Driver.myLocation +
+                            "\n  Serial Number: " + Driver.serialNumber);
+
         ClientDevice device = NucleusFactory.clientDevice(deviceID, DeviceType.discoverMatchingEnum(Driver.deviceType),
                                                           Driver.manufacturer, Driver.modelIdentifier, Driver.serialNumber,
                                                           Driver.osVersion, Driver.os);
@@ -112,9 +120,7 @@ public class Console implements NucleusClientListener {
             }
         });
 
-        startSession();
-
-        LOGGER.info("Exiting!");
+        executor = Executors.newCachedThreadPool();
     }
 
     private void startSession() throws NucleusException {
@@ -173,7 +179,7 @@ public class Console implements NucleusClientListener {
                 LOGGER.info("Found channel by name. channelRef = " + channelRef);
 
                 if ( channelRef == null ) {
-                    createChannel(channelName, null);
+                    createChannel(channelName);
                 }
                 else {
                     try {
@@ -187,23 +193,20 @@ public class Console implements NucleusClientListener {
         });
     }
 
-    private void createChannel(String channelName, String password) {
+    private void createChannel(String channelName) {
         final ChannelService channelService = Driver.nucleusClient.getChannelService();
         GeoCircle circle = new GeoCircle(Driver.myLocation.getLatitude(), Driver.myLocation.getLongitude(), 100);
-        channelService.createChannel(circle, 0, 0, channelName, password, "Site", false,
+        channelService.createChannel(circle, -1, -1, channelName, null, "Site", false,
                                      null, Driver.shortDescription, Driver.longDescription, new ChannelCreateResponseHandler() {
                     @Override
                     public void onSuccess(String channelRef) {
                         // Creating a channel automatically joins you to it, but does not automatically switch
                         // you into it.
-                        LOGGER.info("Successfully created channel. channelRef = " + channelRef);
+                        System.out.println("Successfully created channel. channelRef = " + channelRef);
                         channelService.switchChannel(channelRef, new GeneralResponseHandler() {
                             @Override
                             public void onSuccess() {
-                                // Now that we have our channel created, we want to enable polling on it so that we
-                                // can respond to any chat messages to display on our OLED
-                                Driver.nucleusClient.enablePolling(true);
-                                sendLoop(channelRef);
+                                scanLoop(channelRef);
                             }
 
                             @Override
@@ -224,31 +227,61 @@ public class Console implements NucleusClientListener {
                 });
     }
 
-    private void sendLoop(String channelRef) {
-        Scanner scanner = new Scanner(System.in);
+    private void scanLoop(String channelRef) {
+        Runnable r = () -> {
+            while (!Thread.currentThread().isInterrupted()) {
+                scan(channelRef);
+            }
+        };
+        executor.execute(r);
+    }
 
-        // NOTE:
-        // This is a bad implementation and will ultimately cause a stack overflow.
-
+    private void scan(String channelRef) {
         ChannelService channelService = Driver.nucleusClient.getChannelService();
-        System.out.print("Enter your message: ");
+
+        System.out.print("> ");
+
+        StringBuilder sb = new StringBuilder();
 
         String message = scanner.next();
-        List<MimePart> mimeParts = new ArrayList<>();
-        mimeParts.add(new MimePart("text/plain", "", message.getBytes()));
-        MimeMessage mimeMessage = new MimeMessage(mimeParts);
-        channelService.publish(channelRef, mimeMessage, new ChannelPublishMessageResponseHandler() {
-            @Override
-            public void onSuccess(long offset, long eventID) {
-                System.out.println("    > Message sent");
-                sendLoop(channelRef);
-            }
+        char c = message.charAt(0);
+        if ( c == 'm' ) {
+            String m = message.substring(1).trim();
+            List<MimePart> mimeParts = new ArrayList<>();
+            mimeParts.add(new MimePart("text/plain", "", m.getBytes()));
+            MimeMessage mimeMessage = new MimeMessage(mimeParts);
+            channelService.publish(channelRef, mimeMessage, new ChannelPublishMessageResponseHandler() {
+                @Override
+                public void onSuccess(long offset, long eventID) {
+                    //
+                }
 
-            @Override
-            public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg) {
-                System.out.println("    > Failed to send message - (" + statusCode + ") " + errorMsg);
-            }
-        });
+                @Override
+                public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg) {
+                    System.out.println("!!!! Failed to send message - (" + statusCode + ") " + errorMsg);
+                }
+            });
+        }
+        else if ( c == 'l' ) {
+            String m = message.substring(1).trim();
+            Channel channel = Driver.nucleusClient.getChannel(channelRef);
+            channel.setProperty("led", m, new GeneralResponseHandler() {
+                @Override
+                public void onSuccess() {
+                    //
+                }
+
+                @Override
+                public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg) {
+                    System.out.println("!!!! Failed to send message - (" + statusCode + ") " + errorMsg);
+                }
+            });
+        }
+        else {
+            System.out.println("commands are");
+            System.out.println("   m <message to send>");
+            System.out.println("   l x, y, z (LED values 0-255)");
+        }
     }
 
     private void joinChannel(final String channelRef) throws NucleusException {
@@ -264,14 +297,11 @@ public class Console implements NucleusClientListener {
 
             @Override
             public void onSuccess(final String channelRef, List<TopicOffset> offsets) {
-                LOGGER.info("joinChannel.onSuccess");
+                System.out.println("Successfully joined channel. channelRef=" + channelRef);
                 channelService.switchChannel(channelRef, new GeneralResponseHandler() {
                     @Override
                     public void onSuccess() {
-                        // Now that we have our channel created, we want to enable polling on it so that we
-                        // can respond to any chat messages to display on our OLED
-                        Driver.nucleusClient.enablePolling(true);
-                        sendLoop(channelRef);
+                        scanLoop(channelRef);
                     }
 
                     @Override

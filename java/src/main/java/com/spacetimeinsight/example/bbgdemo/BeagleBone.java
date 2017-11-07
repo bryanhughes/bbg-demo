@@ -87,10 +87,39 @@ public class BeagleBone implements NucleusClientListener
         Driver.osVersion = "8.7";
         Driver.screenName = stdInputStr;
 
-        System.out.println("Using the following properties:" +
-                            "\n  Screen Name:   " + Driver.screenName +
-                            "\n  Location:      " + Driver.myLocation +
-                            "\n  Serial Number: " + Driver.serialNumber);
+        String namespace = "com." + Driver.manufacturer + "." + (Driver.serialNumber == null ? UUID.randomUUID().toString() : Driver.serialNumber);
+
+        // Sadly, there is a bug in nucleus right now so all dashes need to be underbars
+        String deviceID = UUID.nameUUIDFromBytes(namespace.getBytes()).toString().replaceAll("-", "_");
+
+        System.out.println("Using the following values:" +
+                                   "\n  DeviceID:      " + deviceID +
+                                   "\n  Screen Name:   " + Driver.screenName +
+                                   "\n  Location:      " + Driver.myLocation +
+                                   "\n  Serial Number: " + Driver.serialNumber);
+
+
+        ClientDevice device = NucleusFactory.clientDevice(deviceID, DeviceType.discoverMatchingEnum(Driver.deviceType),
+                                                          Driver.manufacturer, Driver.modelIdentifier, Driver.serialNumber,
+                                                          Driver.osVersion, Driver.os);
+        Driver.nucleusClient = new NucleusClient(device, Driver.apiAccountID, Driver.apiAccountToken);
+        Driver.nucleusClient.setServerTarget("http", Driver.SERVER_URL, Driver.SERVER_PORT);
+        Driver.nucleusClient.setActivePartition(Driver.apiKey, Driver.apiToken);
+        Driver.nucleusClient.addListener(this);
+
+        // Must be done after the client has been initialized
+        device.setScreenName(Driver.screenName);
+        device.setCurrentLocation(Driver.myLocation, new DeviceSetDatapointResponseHandler() {
+            @Override
+            public void onSuccess(Datapoint updatedDatapoint) {
+                System.out.println("Successfully set my location to: " + Driver.myLocation);
+            }
+
+            @Override
+            public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
+                System.out.println("FAILED TO SET LOCATION. (" + statusCode + "), " + operationStatus + ", " + errorMessage);
+            }
+        });
     }
 
     private void joinOrCreateChannel(final String channelName) {
@@ -127,7 +156,7 @@ public class BeagleBone implements NucleusClientListener
     private void createChannel(String channelName) {
         final ChannelService channelService = Driver.nucleusClient.getChannelService();
         GeoCircle circle = new GeoCircle(Driver.myLocation.getLatitude(), Driver.myLocation.getLongitude(), 100);
-        channelService.createChannel(circle, 0, 0, channelName, null, "Site", false,
+        channelService.createChannel(circle, -1, -1, channelName, null, "Site", false,
                                      null, Driver.shortDescription, Driver.longDescription, new ChannelCreateResponseHandler() {
                     @Override
                     public void onSuccess(String channelRef) {
@@ -283,9 +312,7 @@ public class BeagleBone implements NucleusClientListener
 
             @Override
             public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                System.out.println("FAILED to set datapoint. operationStatus = " + operationStatus +
-                              ", statusCode = " + statusCode +
-                              ", errorMessage = " + errorMessage);
+                System.out.println("Failed to set datapoint. (" + statusCode + ") - " + errorMessage);
             }
         });
     }
@@ -293,38 +320,6 @@ public class BeagleBone implements NucleusClientListener
     /**
      *
      */
-    private void execute() throws NucleusException, IllegalAccessException, InstantiationException {
-        String namespace = "com." + Driver.manufacturer + "." +
-                           (Driver.serialNumber == null ? UUID.randomUUID().toString() : Driver.serialNumber);
-
-        // Sadly, there is a bug in nucleus right now so all dashes need to be underbars
-        String deviceID = UUID.nameUUIDFromBytes(namespace.getBytes()).toString().replaceAll("-", "_");
-        ClientDevice device = NucleusFactory.clientDevice(deviceID, DeviceType.discoverMatchingEnum(Driver.deviceType),
-                                                          Driver.manufacturer, Driver.modelIdentifier, Driver.serialNumber,
-                                                          Driver.osVersion, Driver.os);
-        Driver.nucleusClient = new NucleusClient(device, Driver.apiAccountID, Driver.apiAccountToken);
-        Driver.nucleusClient.setServerTarget("http", Driver.SERVER_URL, Driver.SERVER_PORT);
-        Driver.nucleusClient.setActivePartition(Driver.apiKey, Driver.apiToken);
-        Driver.nucleusClient.addListener(this);
-
-        // Must be done after the client has been initialized
-        device.setScreenName(Driver.screenName);
-        device.setCurrentLocation(Driver.myLocation, new DeviceSetDatapointResponseHandler() {
-            @Override
-            public void onSuccess(Datapoint updatedDatapoint) {
-                System.out.println("Successfully set my location to: " + Driver.myLocation);
-            }
-
-            @Override
-            public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                System.out.println("FAILED TO SET LOCATION. (" + statusCode + "), " + operationStatus + ", " + errorMessage);
-            }
-        });
-
-        startSession();
-        System.out.println("Exiting!");
-    }
-
     private void renewSession()  {
         System.out.println("Renewing session...");
         DeviceService deviceService = Driver.nucleusClient.getDeviceService();
@@ -336,8 +331,8 @@ public class BeagleBone implements NucleusClientListener
                 }
 
                 @Override
-                public void onFailure(OperationStatus operationStatus, int i, String s) {
-
+                public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg) {
+                    System.out.println("Failed to renew device session. (" + statusCode + ") - " + errorMsg);
                 }
             });
         } catch ( NucleusException e ) {
@@ -348,7 +343,7 @@ public class BeagleBone implements NucleusClientListener
     public static void main(String[] args) throws Exception {
         System.out.println("Starting up beaglebone green demo...");
         BeagleBone beagleBone = new BeagleBone(args);
-        beagleBone.execute();
+        beagleBone.startSession();
     }
 
 
@@ -433,6 +428,7 @@ public class BeagleBone implements NucleusClientListener
 
     @Override
     public void onPropertyChange(String channelRef, Property property) {
+        System.out.println(">>> Handling channel property " + property + " >> " + LED_FILENAME);
         // We got a property change. For our BeagleBone demo, the property is the LED light
         if ( property.getName().equals("led") ) {
             String valueStr = property.getValue();
