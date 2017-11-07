@@ -14,14 +14,14 @@ and writes out control changes. Their also a Java Console application that allow
 to the BeagleBone. You can run this from any computer. The Android application is a very simple mobile application that allows
 you to control the BeagleBone.
 
-####What Exactly Can You Do?
+#### What Exactly Can You Do?
 This project demonstrates how to stream telemetry data, temperature and humidity, from the BeagleBone Green to the SpaceTime IoT Warp Platform via the
 SDK. It also demonstrates how to send back messages to the device to control it. Their are two elements on the BeagleBone that
 you can control, the LED light and the message displayed on the OLED screen. When there is no specific message being displayed,
 or after 5 minutes of displaying the custom message, the device switches back to display the temperature and humidity.
 
 
-###Connecting the Hardware
+### Connecting the Hardware
 The parts to build this project include:
 
 1) [BeagleBone Green Wireless Development Board](https://www.seeedstudio.com/BeagleBone-Green-Wireless-Development-Board%EF%BC%88TI-AM335x-WiFi%2BBT%EF%BC%89-p-2650.html)
@@ -34,7 +34,7 @@ NOTE: The OLED Display, LED Chainable Sensor, and I2C Hub were part of the Start
 
 ![parts-2](docs/images/parts-2.jpg)
 
-####Logging on using screen
+#### Logging on using screen
 When you connect the BeagleBone to your laptop using the USB, you have two options of connecting. The first is to use screen. 
 The second is to use SSH. Sometimes the usb network connection does not always get set up correctly, so the fallback
 is always the `screen` command. In either case, to confirm that the BeagleBone is mounted to your laptop, you should
@@ -50,11 +50,11 @@ in using screen where the device is identified as `tty.usbmodem1425`
 $ screen /dev/tty.usbmodem1425 115200
 ```
 
-####Logging on using ssh
+#### Logging on using ssh
 As the documentation explains, the mounted device should set up a USB network between the laptop and the device. The
 address of the device will be 192.168.7.2.
 
-####Configuring the Wifi
+#### Configuring the Wifi
 There are instructions for configuring the wifi on the BeagleBone by selecting the AP and then configuring the
 correct SID and passphrase. This does not always work. If it doesnt, the you will need to configure it manually
 by logging onto the device and type the following
@@ -72,7 +72,7 @@ Test your connection...
 
     $ ping yahoo.com	
 
-###Update the Software
+### Update the Software
 When you're in, update your software:
 
 ```
