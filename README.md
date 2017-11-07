@@ -7,7 +7,32 @@ This project demonstrates how easy it is to build a BeagleBone Green IoT device 
 
 If you are starting from scratch, please follow the instructions for [Getting Started](http://beagleboard.org/getting-started). Once you have your BeagleBone connected and accessible, go ahead and SSH onto the device.
 
+This project is composed of several Python scripts, Java components, and an Android app. The Python scripts do the actual
+controlling of the BeagleBone sensors. The main script is `iot_demo.py`. This needs to be run as `sudo` in the background.
+The Java components include the java application that implements the Nucleus SDK that provides connectivity and reads sensor data
+and writes out control changes. Their also a Java Console application that allows you to send messages and LED changes
+to the BeagleBone. You can run this from any computer. The Android application is a very simple mobile application that allows
+you to control the BeagleBone.
+
+####What Exactly Can You Do?
+This project demonstrates how to stream telemetry data, temperature and humidity, from the BeagleBone Green to the SpaceTime IoT Warp Platform via the
+SDK. It also demonstrates how to send back messages to the device to control it. Their are two elements on the BeagleBone that
+you can control, the LED light and the message displayed on the OLED screen. When there is no specific message being displayed,
+or after 5 minutes of displaying the custom message, the device switches back to display the temperature and humidity.
+
+
 ###Connecting the Hardware
+The parts to build this project include:
+
+1) [BeagleBone Green Wireless Development Board](https://www.seeedstudio.com/BeagleBone-Green-Wireless-Development-Board%EF%BC%88TI-AM335x-WiFi%2BBT%EF%BC%89-p-2650.html)
+2) [Temperature & Humidity Sensor Pro](https://www.seeedstudio.com/Grove-Temperature%26Humidity-Sensor-Pro%EF%BC%88AM2302%EF%BC%89-p-838.html)
+3) [Seeedstudio Grove Starter Kit for BeagleBone Green](https://www.amazon.com/gp/product/B018FNOJUK/ref=oh_aui_detailpage_o07_s00?ie=UTF8&psc=1)
+
+
+![parts](docs/images/parts.jpg) 
+NOTE: The OLED Display, LED Chainable Sensor, and I2C Hub were part of the Starter Kit
+
+![parts-2](docs/images/parts-2.jpg)
 
 ####Logging on using screen
 When you connect the BeagleBone to your laptop using the USB, you have two options of connecting. The first is to use screen. 

@@ -30,6 +30,7 @@ import javax.xml.bind.DatatypeConverter;
 import java.io.*;
 import java.net.URL;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -185,7 +186,6 @@ public class BeagleBone implements NucleusClientListener
                     public void onSuccess() {
                         // Now that we have our channel created, we want to enable polling on it so that we
                         // can respond to any chat messages to display on our OLED
-                        Driver.nucleusClient.enablePolling(true);
                         sendLoop();
                     }
 
@@ -201,16 +201,29 @@ public class BeagleBone implements NucleusClientListener
     }
 
     private void sendLoop() {
-        final Runnable timer = () -> {
-            try {
-                sendData();
-            }
-            catch( Exception e ) {
-                e.printStackTrace();
-                System.out.println("Caught exception: " + e.getMessage());
-            }
+        System.out.println("Starting run loop...");
+        Runnable r = () -> {
+            Channel channel = Driver.nucleusClient.getCurrentChannel();
+            List<TopicType> pollTypes = new ArrayList<>();
+            pollTypes.add(TopicType.EChannelMessage);
+            channel.setPollTopics(pollTypes);
+
+            Driver.nucleusClient.enablePolling(true);
+
+            final Runnable timer = () -> {
+                try {
+                    sendData();
+                }
+                catch( Exception e ) {
+                    e.printStackTrace();
+                    System.out.println("Caught exception: " + e.getMessage());
+                }
+            };
+            scheduler.scheduleAtFixedRate(timer, 0, 1, TimeUnit.SECONDS);
         };
-        scheduler.scheduleAtFixedRate(timer, 0, 1, TimeUnit.SECONDS);
+
+        ExecutorService executor = Executors.newCachedThreadPool();
+        executor.submit(r);
     }
 
     private void startSession() throws NucleusException {
