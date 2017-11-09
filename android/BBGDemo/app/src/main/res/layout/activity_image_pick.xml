@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto" xmlns:tools="http://schemas.android.com/tools"
+        android:id="@+id/activity_image_pick"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        tools:context="com.spacetimeinsight.bbgdemo.ImagePickActivity">
+
+    <Button
+            android:id="@+id/use_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/use_image"
+            android:onClick="useImage"
+            android:layout_centerInParent="true"
+            android:layout_alignParentTop="false"
+            android:layout_alignParentBottom="true"/>
+    <ImageView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:srcCompat="@mipmap/profile_missing"
+            android:adjustViewBounds="false"
+            android:cropToPadding="false"
+            android:layout_alignWithParentIfMissing="true"
+            android:id="@+id/pick_result"
+            android:contentDescription="@string/picked_image"/>
+
+</RelativeLayout>

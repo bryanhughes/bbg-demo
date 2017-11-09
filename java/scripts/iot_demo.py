@@ -27,66 +27,87 @@ if __name__=="__main__":
     grove_oled.oled_setNormalDisplay()
     grove_oled.oled_clearDisplay()
 
-    countdown = 0
+    msgCountDown = 0
+    ledCountDown = 0
     clear = 1
 
-    while True:
-        humidity, temperature = grove_dht.read()
+    humidity0 = 0
+    temperature0 = 0
 
-        # We will open the file and overwrite it on every write...
-        sensor_file = open(SENSOR_FILENAME, "w")
-        sensor_file.write('{0:0.1f},{1:0.1f},{2:0d}'.format(temperature, humidity, int(time.time())))
-        sensor_file.close()
+    c = '+'
+
+    while True:
+        humidity1, temperature1 = grove_dht.read()
+
+        if (humidity0 != humidity1) or (temperature0 != temperature1):
+            # We will open the file and overwrite it on every write...
+            sensor_file = open(SENSOR_FILENAME, "w")
+            sensor_file.write('{0:0.1f},{1:0.1f},{2:0d}'.format(temperature1, humidity1, int(time.time())))
+            sensor_file.close()
+            print('Temp={0:0.1f}*  Humidity={1:0.1f}%'.format(temperature1, humidity1))
+
+        humidity0 = humidity1
+        temperature0 = temperature1
 
         # We are going to look to a file for any message to display on our OLED
-        try:
-            message_file = open(MESSAGE_FILENAME, "r")
-        except IOError:
-            if (countdown == 0):
-                if ( clear == 1 ):
+        if msgCountDown == 0:
+            try:
+                message_file = open(MESSAGE_FILENAME, "r")
+            except IOError:
+                if clear == 1:
                     grove_oled.oled_clearDisplay()
                     clear = 0
 
                 grove_oled.oled_setTextXY(0, 0)
-                grove_oled.oled_putString('Temp:{0:0.1f}C'.format(temperature))
+                grove_oled.oled_putString('Temp:{0:0.1f}C'.format(temperature1))
                 grove_oled.oled_setTextXY(1, 0)
-                grove_oled.oled_putString('Hum: {0:0.1f}%'.format(humidity))
-                grove_oled.oled_setTextXY(5, 0)
-                grove_oled.oled_putString("SpaceTime")
+                grove_oled.oled_putString('Hum: {0:0.1f}%'.format(humidity1))
             else:
-                countdown = countdown - 1
+                message = message_file.readline()
+                print('message = ' + message)
+                message_file.close()
+                os.remove(MESSAGE_FILENAME)
+
+                grove_oled.oled_clearDisplay()
+                time.sleep(2)
+
+                grove_oled.oled_setTextXY(0, 0)
+                grove_oled.oled_putString("           ")
+                grove_oled.oled_setTextXY(0, 0)
+                grove_oled.oled_putString(message)
+                grove_oled.oled_setTextXY(1, 0)
+                grove_oled.oled_putString("           ")
+                msgCountDown = 10
+                clear = 1
         else:
-            message = message_file.readline()
-            print('message = ' + message)
-            message_file.close()
-            os.remove(MESSAGE_FILENAME)
+            msgCountDown = msgCountDown - 1
+            if msgCountDown < 0:
+                msgCountDown = 0
 
-            grove_oled.oled_clearDisplay()
-            time.sleep(2)
+        if c == '+':
+            c = '-'
+        else:
+            c = '+'
+        grove_oled.oled_setTextXY(2, 0)
+        grove_oled.oled_putString(c)
+        grove_oled.oled_setTextXY(5, 0)
+        grove_oled.oled_putString("SpaceTime")
 
-            grove_oled.oled_setTextXY(0, 0)
-            grove_oled.oled_putString("           ")
-            grove_oled.oled_setTextXY(0, 0)
-            grove_oled.oled_putString(message)
-            grove_oled.oled_setTextXY(1, 0)
-            grove_oled.oled_putString("           ")
-            countdown = 10
-            clear = 1
 
-        # The same for what to do with our LED
+
+# The same for what to do with our LED
         try:
             led_file = open(LED_FILENAME, "r")
-        except IOError:
-            rgb_led.setColorRGB(0, 0, 0, 0)
-        else:
-            led_values = led_file.readline(1)
-            print('led_values = ' + led_values)
+            led_values = led_file.readline()
             led_file.close()
+            os.remove(LED_FILENAME)
+            try:
+                parts = [x.strip() for x in led_values.split(',')]
+                print "led_values = [{}, {}, {}] - len = {}".format(int(parts[0]), int(parts[1]), int(parts[2]), len(parts))
+                rgb_led.setColorRGB(0, int(parts[0]), int(parts[1]), int(parts[2]))
+            except:
+                print('An error occured setting LED RGB.')
+        except:
+            pass
 
-            parts = [x.strip() for x in led_values.split(',')]
-            if ( len(parts) == 3 ):
-                rgb_led.setColorRGB(0, parts[0], parts[1], parts[2])
-
-        print('Temp={0:0.1f}*  Humidity={1:0.1f}%'.format(temperature, humidity))
-
-        time.sleep(2)
+        time.sleep(.5)

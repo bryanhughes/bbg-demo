@@ -48,6 +48,8 @@ public class BeagleBone implements NucleusClientListener
     private static String SENSOR_FILENAME = "/tmp/sensor.dat";
     private static String LED_FILENAME = "/tmp/led.dat";
 
+    private IOBridge.SensorData lastSensorData;
+
     protected BeagleBone(String[] args) throws IOException {
 
         Level level = Level.INFO;
@@ -196,6 +198,7 @@ public class BeagleBone implements NucleusClientListener
         Map<JoinOption, Object> joinOptions = new HashMap<>();
         List<TopicOffset> offsets = new ArrayList<>();
         offsets.add(new TopicOffset(channelRef, TopicType.EChannelMessage, -1, 1));
+        offsets.add(new TopicOffset(channelRef, TopicType.EProperty, -1, 1));
         joinOptions.put(JoinOption.OFFSET_LIST, offsets);
 
         channelService.joinChannel(channelRef, joinOptions, new ChannelJoinResponseHandler() {
@@ -235,6 +238,7 @@ public class BeagleBone implements NucleusClientListener
             Channel channel = Driver.nucleusClient.getCurrentChannel();
             List<TopicType> pollTypes = new ArrayList<>();
             pollTypes.add(TopicType.EChannelMessage);
+            pollTypes.add(TopicType.EProperty);
             channel.setPollTopics(pollTypes);
 
             Driver.nucleusClient.enablePolling(true);
@@ -296,7 +300,11 @@ public class BeagleBone implements NucleusClientListener
 
     private void sendData() {
         final IOBridge ioBridge = new IOBridge();
-        com.spacetimeinsight.example.bbgdemo.IOBridge.SensorData sensorData = ioBridge.getSensorData();
+        IOBridge.SensorData sensorData = ioBridge.getSensorData();
+
+        if ( (lastSensorData != null) && (sensorData.humidity == lastSensorData.humidity) && (sensorData.temperature == lastSensorData.temperature) ) {
+            return;
+        }
 
         EnvData envData = new EnvData(sensorData.timestamp, sensorData.temperature, 0, sensorData.humidity, 0);
 
@@ -308,11 +316,13 @@ public class BeagleBone implements NucleusClientListener
             @Override
             public void onSuccess(Datapoint updatedDatapoint) {
                 System.out.println(">>> Successfully set sensor data: "  + envData.toString());
+                lastSensorData = sensorData;
             }
 
             @Override
             public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                System.out.println("Failed to set datapoint. (" + statusCode + ") - " + errorMessage);
+                System.out.println("Failed to set datapoint : " + operationStatus + " (" + statusCode + ") - " + errorMessage);
+                lastSensorData = null;
             }
         });
     }
@@ -452,7 +462,6 @@ public class BeagleBone implements NucleusClientListener
         // We got a new channel message, now display it on the OLED. It is important to remember that the actual
         // device control is being handled by the Python scripts. We write our message to a shared file that the
         // scripts are listening to
-
 
         MimeMessage mimeMessage = channelMessage.getMimeMessage();
         List<MimePart> parts = mimeMessage.getMimeParts();

@@ -53,7 +53,7 @@ task release(type: Zip, dependsOn: 'prepareRelease') {
     from fileTree(dir: '../libs', include: '**/*')
     from file("./local-template.properties")
     from file("./tinylog.properties")
-    from file("./README.md")
+    from file("../../README.md")
     from file("./run_bbg.sh")
     from file("./run_bbg_java.sh")
     from file("./run_console.sh")

@@ -33,7 +33,6 @@
 
 from Adafruit_I2C import Adafruit_I2C
 import time
-import math
 
 
 Oled = Adafruit_I2C(0x3c, 2)

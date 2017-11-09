@@ -228,6 +228,7 @@ public class Console implements NucleusClientListener {
     }
 
     private void scanLoop(String channelRef) {
+        System.out.println("Enter command: (m <message> or l <led comma separated values R,G,B>");
         Runnable r = () -> {
             while (!Thread.currentThread().isInterrupted()) {
                 scan(channelRef);
@@ -239,10 +240,6 @@ public class Console implements NucleusClientListener {
     private void scan(String channelRef) {
         ChannelService channelService = Driver.nucleusClient.getChannelService();
 
-        System.out.print("> ");
-
-        StringBuilder sb = new StringBuilder();
-
         String message = scanner.next();
         char c = message.charAt(0);
         if ( c == 'm' ) {
@@ -253,7 +250,7 @@ public class Console implements NucleusClientListener {
             channelService.publish(channelRef, mimeMessage, new ChannelPublishMessageResponseHandler() {
                 @Override
                 public void onSuccess(long offset, long eventID) {
-                    //
+                    System.out.println("[ok]");
                 }
 
                 @Override
@@ -268,7 +265,7 @@ public class Console implements NucleusClientListener {
             channel.setProperty("led", m, new GeneralResponseHandler() {
                 @Override
                 public void onSuccess() {
-                    //
+                    System.out.println("[ok]");
                 }
 
                 @Override

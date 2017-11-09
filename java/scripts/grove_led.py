@@ -35,8 +35,8 @@ import time
 from logo import print_sti
 import Adafruit_BBIO.GPIO as GPIO
 
-CLK_PIN = "P9_22"
-DATA_PIN = "P9_21"
+CLK_PIN = "P9_14"
+DATA_PIN = "P9_16"
 NUMBER_OF_LEDS = 1
 
 class ChainableLED():

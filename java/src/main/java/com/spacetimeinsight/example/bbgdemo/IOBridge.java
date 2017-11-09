@@ -75,7 +75,7 @@ public class IOBridge {
 
             String line;
             while ( (line = br.readLine()) != null ) {
-                System.out.println(line);
+                LOGGER.info("readLine=" + line);
                 buffer = line;
             }
         }

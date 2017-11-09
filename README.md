@@ -93,25 +93,49 @@ Your SSH connection should drop, but you can pull it back up as soon as the Beag
 
 Next, you will need to have Java 8 JDK [installed on your BBG](http://beagleboard.org/project/java/). 
 
+
+## Building your Project
 Everything you need to build, or rebuild the project, is included in this project. The project uses Gradle and includes a `build.gradle`. If you are using Eclipse or IntelliJ, simply import the project from sources.
 
 The tasks to build the project are: 
 
 	./gradle clean build release
 
-After you have built the project, navigate to the `release` directory to find the weatherstation-1.0.zip file.
+After you have built the project, navigate to the `release` directory to find the `bbg-demo-1.0.zip` file. You will need to
+secure copy this file to your BeagleBone Green. It is recommended that you make a bbgdemo directory on the BeagleBone Green
+under the home directory.
 
-Move this to a desired directory where you will unzip to. You will see the executable JAR and supporting libraries.
+    $ scp release/bbg-demo-1.0.zip debian@<ip-addresss>:bbgdemo
 
-Next, edit the local.properties file and set the api_accountid, api_accounttoken, api_key, and api_token to the values of your account and partition from the nucleus application console.
+Back on the device, unzip the file. You will see the executable JAR and supporting libraries.
 
-Also, set the latitude and longitude of your station, along with its name, and a site name.
+Next, edit the local.properties file and set the api_accountid, api_accounttoken, api_key, and api_token to the values 
+of your account and partition from the nucleus application console. For the out of the box demo, simply copy the 
+`local-template.properties` file to `local.properties`. This will have the necessary credentials and tokens to connect
+to the SpaceTime demo server.
+
+Also, if you want your device to be at a specific location in the world, be sure to edit the `local.properties` file and 
+set the latitude and longitude of your station, along with its name, and a site name.
 
 To find you location, simply open [https://www.google.com/maps](https://www.google.com/maps) and find your location on the map. Zoom in to get a precise location (or enter the address). Click and hold for a moment and you will get the latitude and longitude coordinates of that location. 
 
-Finally, type 
+You will need two terminal windows open. In the first window, start up the Python scripts that will drive the sensors 
 
-	./run_bbg.sh
+	$ sudo python iot_demo.py
+	
+In the second window, start up that Java application
+
+    $ sudo ./run_bbg
+    
+Your BeagleBone Green should now be reporting the temperature and humidity of your location and should be displaying it on
+the OLED screen. Please note that the LED flashes on startup. It does take a minute to startup.
+
+To control the LED or send a message, back on your laptop, you can either unzip the `bbg-demo-1.0.zip` in the release directory, 
+or move it to another temp directory. In it, you will find another script called `bbg_console.sh`. If you run this, you can
+now send messages to your BeagleBone.
+
+Finally, if you have an Android development phone and environment available, build the Android APK and deploy it onto your
+phone. This modest app will demonstrate how you can now control your BeagleBone with your phone.    	
 
 
 

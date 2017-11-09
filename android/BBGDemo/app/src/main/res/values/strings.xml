@@ -1,0 +1,35 @@
+<resources>
+    <string name="app_name">BBG Demo</string>
+    <string name="title_home">Home</string>
+    <string name="title_dashboard">Dashboard</string>
+    <string name="title_notifications">Notifications</string>
+
+    <string name="title_activity_profile">ProfileActivity</string>
+    <string name="click_on_image_to_change">(click on image to change)</string>
+    <string name="screen_name">Screen name…</string>
+    <string name="your_screen_name">Your screen name</string>
+    <string name="profile_picture">Profile Picture</string>
+    <string name="save">Save</string>
+    <string name="err_invalid_screenanem">Please enter a screen name</string>
+    <string name="title_activity_map">MapActivity</string>
+    <string name="pick_image">Pick Image</string>
+    <string name="use_image">Use Image</string>
+    <string name="take_photo">Take Photo</string>
+    <string name="picked_image">Picked Image</string>
+
+    <string name="create_new_partition">Create new partition</string>
+    <string name="partition_name">Partition Name:</string>
+    <string name="e_g_myapp">e.g. myapp</string>
+    <string name="e_g_my_application">e.g. My Application</string>
+    <string name="company_name">Company Name:</string>
+    <string name="create_partition">CREATE PARTITION</string>
+    <string name="or_find_and_join_partition">or Find and Join Partition</string>
+    <string name="find_partition">Find Partition</string>
+    <string name="e_g_acme_software">e.g. Acme Software</string>
+    <string name="e_g_acme_com">e.g. acme.com</string>
+    <string name="partitions">Partitions</string>
+    <string name="profile">Profile</string>
+    <string name="partition">Partition</string>
+    <string name="channel">Channel</string>
+
+</resources>
