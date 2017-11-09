@@ -29,6 +29,10 @@ public class MainActivity extends AppCompatActivity {
     private static String[] PERMISSION_LOCATION = {android.Manifest.permission.ACCESS_FINE_LOCATION,
             android.Manifest.permission.ACCESS_COARSE_LOCATION};
 
+    private SeekBar redBar;
+    private SeekBar greenBar;
+    private SeekBar blueBar;
+
     private BottomNavigationView.OnNavigationItemSelectedListener mOnNavigationItemSelectedListener
             = new BottomNavigationView.OnNavigationItemSelectedListener() {
 
@@ -69,14 +73,9 @@ public class MainActivity extends AppCompatActivity {
                 int gVal = intent.getIntExtra("green", 0);
                 int bVal = intent.getIntExtra("blue", 0);
 
-                SeekBar seekBar = (SeekBar) findViewById(R.id.redSeekBar);
-                seekBar.setProgress(rVal, true);
-
-                seekBar = (SeekBar) findViewById(R.id.greenSeekBar);
-                seekBar.setProgress(gVal, true);
-
-                seekBar = (SeekBar) findViewById(R.id.blueSeekBar);
-                seekBar.setProgress(bVal, true);
+                redBar.setProgress(rVal, true);
+                greenBar.setProgress(gVal, true);
+                blueBar.setProgress(bVal, true);
             }
         }
     };
@@ -125,6 +124,10 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        redBar = (SeekBar) findViewById(R.id.redSeekBar);
+        greenBar = (SeekBar) findViewById(R.id.greenSeekBar);
+        blueBar = (SeekBar) findViewById(R.id.blueSeekBar);
+
         BottomNavigationView navigation = (BottomNavigationView) findViewById(R.id.navigation);
         navigation.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
 
@@ -137,14 +140,9 @@ public class MainActivity extends AppCompatActivity {
         super.onStart();
         BBGDemoApplication app = (BBGDemoApplication) getApplication();
 
-        SeekBar seekBar = (SeekBar) findViewById(R.id.redSeekBar);
-        seekBar.setProgress(app.getRedLED());
-
-        seekBar = (SeekBar) findViewById(R.id.greenSeekBar);
-        seekBar.setProgress(app.getGreenLED());
-
-        seekBar = (SeekBar) findViewById(R.id.blueSeekBar);
-        seekBar.setProgress(app.getBlueLED());
+        redBar.setProgress(app.getRedLED());
+        greenBar.setProgress(app.getGreenLED());
+        blueBar.setProgress(app.getBlueLED());
 
         ensureStarted.postDelayed(ensureRunnable, 1000);
     }
