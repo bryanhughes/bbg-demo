@@ -16,6 +16,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.MenuItem;
 import android.widget.SeekBar;
+import android.widget.TextView;
 
 import com.spacetimeinsight.nucleus.android.NucleusService;
 import com.spacetimeinsight.nucleuslib.NucleusException;
@@ -65,7 +66,6 @@ public class MainActivity extends AppCompatActivity {
     };
 
     private BroadcastReceiver receiver = new BroadcastReceiver() {
-        @RequiresApi(api = Build.VERSION_CODES.N)
         @Override
         public void onReceive(Context context, Intent intent) {
             if ( intent.getAction().equals(BBGDemoApplication.BROADCAST_PROPERTY_ACTION) ) {
@@ -73,9 +73,23 @@ public class MainActivity extends AppCompatActivity {
                 int gVal = intent.getIntExtra("green", 0);
                 int bVal = intent.getIntExtra("blue", 0);
 
-                redBar.setProgress(rVal, true);
-                greenBar.setProgress(gVal, true);
-                blueBar.setProgress(bVal, true);
+                redBar.setProgress(rVal);
+                greenBar.setProgress(gVal);
+                blueBar.setProgress(bVal);
+            }
+            else if ( intent.getAction().equals(BBGDemoApplication.BROADCAST_SENSOR_ACTION) ) {
+                int h = intent.getIntExtra("h", 0);
+                int t = intent.getIntExtra("t", 0);
+                long ts = intent.getLongExtra("ts", 0);
+
+                TextView hView = (TextView) findViewById(R.id.humidityTextView);
+                hView.setText(String.valueOf(h));
+
+                TextView tView = (TextView) findViewById(R.id.tempTextView);
+                tView.setText(String.valueOf(t));
+
+                TextView tsView = (TextView) findViewById(R.id.timestampTextView);
+                tsView.setText(String.valueOf(ts));
             }
         }
     };
@@ -151,6 +165,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         IntentFilter filter = new IntentFilter();
         filter.addAction(BBGDemoApplication.BROADCAST_PROPERTY_ACTION);
+        filter.addAction(BBGDemoApplication.BROADCAST_SENSOR_ACTION);
         registerReceiver(receiver, filter);
         super.onResume();
     }

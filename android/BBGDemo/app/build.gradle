@@ -10,15 +10,6 @@ android {
         versionCode 1
         versionName "1.0"
 
-        //nucleus-android-sdk has more than 64K methods.
-        //TODO We should try to reduce that.
-        multiDexEnabled true
-        //Loading all those into methods can cause Out of Memory Error
-        //FIX: increase heap size; see above TODO
-        dexOptions {
-            javaMaxHeapSize "2g"
-        }
-
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     buildTypes {

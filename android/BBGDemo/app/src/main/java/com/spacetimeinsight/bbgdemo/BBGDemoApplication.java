@@ -16,8 +16,11 @@ import android.support.v7.app.AlertDialog;
 import android.util.Log;
 import android.widget.Toast;
 
+import com.google.protobuf.nano.InvalidProtocolBufferNanoException;
 import com.spacetimeinsight.nucleus.android.NucleusService;
+import com.spacetimeinsight.nucleuslib.Channel;
 import com.spacetimeinsight.nucleuslib.ChannelService;
+import com.spacetimeinsight.nucleuslib.Datapoint;
 import com.spacetimeinsight.nucleuslib.Member;
 import com.spacetimeinsight.nucleuslib.NucleusClientListener;
 import com.spacetimeinsight.nucleuslib.NucleusException;
@@ -25,6 +28,7 @@ import com.spacetimeinsight.nucleuslib.PartitionInfo;
 import com.spacetimeinsight.nucleuslib.PartitionService;
 import com.spacetimeinsight.nucleuslib.core.ClientDevice;
 import com.spacetimeinsight.nucleuslib.datamapped.ChannelMessage;
+import com.spacetimeinsight.nucleuslib.datamapped.EnvData;
 import com.spacetimeinsight.nucleuslib.datamapped.GeoCircle;
 import com.spacetimeinsight.nucleuslib.datamapped.NucleusLocation;
 import com.spacetimeinsight.nucleuslib.datamapped.Property;
@@ -40,6 +44,7 @@ import com.spacetimeinsight.nucleuslib.types.HealthType;
 import com.spacetimeinsight.nucleuslib.types.JoinOption;
 import com.spacetimeinsight.nucleuslib.types.OperationStatus;
 import com.spacetimeinsight.nucleuslib.types.TopicType;
+import com.spacetimeinsight.protobuf.nano.EnvDataProto;
 
 import java.net.URL;
 import java.util.ArrayList;
@@ -55,7 +60,8 @@ import java.util.Set;
 
 public class BBGDemoApplication extends Application implements NucleusClientListener {
     private static final String LOG_TAG = BBGDemoApplication.class.getName();
-    public static String BROADCAST_PROPERTY_ACTION = "com.spacetimeinsight.nucleus.PROPERTY_CHANGE";
+    public static String BROADCAST_PROPERTY_ACTION = "com.spacetimeinsight.bbgdemo.PROPERTY_CHANGE";
+    public static String BROADCAST_SENSOR_ACTION = "com.spacetimeinsight.bbgdemo.SENSOR_CHANGE";
     private static NucleusService nucleusService = null;
     private static ProgressDialog progress;
     private static Bitmap systemImage;
@@ -313,7 +319,7 @@ public class BBGDemoApplication extends Application implements NucleusClientList
                             public void onSuccess() {
                                 // Now that we have our channel created, we want to enable polling on it so that we
                                 // can respond to any chat messages to display on our OLED
-                                nucleusService.enablePolling(true);
+                                startPolling();
                             }
 
                             @Override
@@ -360,7 +366,7 @@ public class BBGDemoApplication extends Application implements NucleusClientList
                     public void onSuccess() {
                         // Now that we have our channel created, we want to enable polling on it so that we
                         // can respond to any chat messages to display on our OLED
-
+                        startPolling();
                     }
 
                     @Override
@@ -372,6 +378,17 @@ public class BBGDemoApplication extends Application implements NucleusClientList
                 });
             }
         });
+    }
+
+    void startPolling() {
+        Channel channel = nucleusService.getCurrentChannel();
+        List<TopicType> pollTypes = new ArrayList<>();
+        pollTypes.add(TopicType.EChannelMessage);
+        pollTypes.add(TopicType.EProperty);
+        pollTypes.add(TopicType.EDatapoint);
+        channel.setPollTopics(pollTypes);
+
+        nucleusService.enablePolling(true);
     }
 
     @Override
@@ -584,7 +601,24 @@ public class BBGDemoApplication extends Application implements NucleusClientList
 
     @Override
     public void onMemberDatapointChange(Member member) {
-        System.out.println("member=" + member);
+        Datapoint datapoint = member.getDatapoint(0);
+        if ( (datapoint != null) && (datapoint.getProtoName() != null) && "EnvData".equals(datapoint.getProtoName()) ) {
+            try {
+                EnvDataProto.EnvData edata = EnvDataProto.EnvData.parseFrom(datapoint.getProtobuffer());
+
+                Intent broadcast = new Intent();
+                broadcast.setAction(BROADCAST_SENSOR_ACTION);
+                broadcast.putExtra("h", edata.humidity);
+                broadcast.putExtra("t", edata.temperature);
+                broadcast.putExtra("ts", edata.timestamp);
+
+                sendBroadcast(broadcast);
+            }
+            catch (InvalidProtocolBufferNanoException e) {
+                showAlert("Error", "Failed to parse EnvData protobuffer.");
+                e.printStackTrace();
+            }
+        }
     }
 
     @Override
@@ -599,7 +633,7 @@ public class BBGDemoApplication extends Application implements NucleusClientList
 
     @Override
     public void onMemberPresenceChange(Member member) {
-
+        System.out.println("member=" + member);
     }
 
     @Override
