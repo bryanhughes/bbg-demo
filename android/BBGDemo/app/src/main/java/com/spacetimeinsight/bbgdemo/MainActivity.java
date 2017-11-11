@@ -4,22 +4,34 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.annotation.NonNull;
-import android.support.annotation.RequiresApi;
 import android.support.design.widget.BottomNavigationView;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
 import com.spacetimeinsight.nucleus.android.NucleusService;
+import com.spacetimeinsight.nucleuslib.Channel;
+import com.spacetimeinsight.nucleuslib.ChannelService;
 import com.spacetimeinsight.nucleuslib.NucleusException;
+import com.spacetimeinsight.nucleuslib.datamapped.MimeMessage;
+import com.spacetimeinsight.nucleuslib.datamapped.MimePart;
+import com.spacetimeinsight.nucleuslib.responsehandlers.ChannelPublishMessageResponseHandler;
+import com.spacetimeinsight.nucleuslib.responsehandlers.GeneralResponseHandler;
+import com.spacetimeinsight.nucleuslib.types.OperationStatus;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 
 import static android.support.v4.content.PermissionChecker.PERMISSION_GRANTED;
 
@@ -33,6 +45,10 @@ public class MainActivity extends AppCompatActivity {
     private SeekBar redBar;
     private SeekBar greenBar;
     private SeekBar blueBar;
+
+    private TextView hView;
+    private TextView tView;
+    private TextView tsView;
 
     private BottomNavigationView.OnNavigationItemSelectedListener mOnNavigationItemSelectedListener
             = new BottomNavigationView.OnNavigationItemSelectedListener() {
@@ -78,17 +94,12 @@ public class MainActivity extends AppCompatActivity {
                 blueBar.setProgress(bVal);
             }
             else if ( intent.getAction().equals(BBGDemoApplication.BROADCAST_SENSOR_ACTION) ) {
-                int h = intent.getIntExtra("h", 0);
-                int t = intent.getIntExtra("t", 0);
+                double h = intent.getDoubleExtra("h", 0);
+                double t = intent.getDoubleExtra("t", 0);
                 long ts = intent.getLongExtra("ts", 0);
 
-                TextView hView = (TextView) findViewById(R.id.humidityTextView);
-                hView.setText(String.valueOf(h));
-
-                TextView tView = (TextView) findViewById(R.id.tempTextView);
-                tView.setText(String.valueOf(t));
-
-                TextView tsView = (TextView) findViewById(R.id.timestampTextView);
+                hView.setText(String.format(Locale.getDefault(), "%.2f %%", h));
+                tView.setText(String.format(Locale.getDefault(), "%.1f C", t));
                 tsView.setText(String.valueOf(ts));
             }
         }
@@ -132,6 +143,37 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+    private SeekBar.OnSeekBarChangeListener onSeekChangeBarListener = new SeekBar.OnSeekBarChangeListener() {
+        @Override
+        public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+
+        }
+
+        @Override
+        public void onStartTrackingTouch(SeekBar seekBar) {
+
+        }
+
+        @Override
+        public void onStopTrackingTouch(SeekBar seekBar) {
+            final NucleusService nucleusService = BBGDemoApplication.getNucleusService();
+            Channel channel = nucleusService.getCurrentChannel();
+            final String ledStr = getLEDString();
+            channel.setProperty("led", ledStr, new GeneralResponseHandler() {
+                @Override
+                public void onSuccess() {
+                    Log.i(LOG_TAG, "Successfully set channel property - " + ledStr);
+                }
+
+                @Override
+                public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg) {
+                    Log.e(LOG_TAG, "Failed to set channel property - " + ledStr + ". " + operationStatus + " (" +
+                            statusCode + ") - " + errorMsg);
+                }
+            });
+        }
+    };
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -141,6 +183,40 @@ public class MainActivity extends AppCompatActivity {
         redBar = (SeekBar) findViewById(R.id.redSeekBar);
         greenBar = (SeekBar) findViewById(R.id.greenSeekBar);
         blueBar = (SeekBar) findViewById(R.id.blueSeekBar);
+
+        redBar.setOnSeekBarChangeListener(onSeekChangeBarListener);
+        greenBar.setOnSeekBarChangeListener(onSeekChangeBarListener);
+        blueBar.setOnSeekBarChangeListener(onSeekChangeBarListener);
+
+        Button sendButton = (Button) findViewById(R.id.sendButton);
+        sendButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                NucleusService nucleusService = BBGDemoApplication.getNucleusService();
+                ChannelService channelService = nucleusService.getChannelService();
+
+                EditText messageText = (EditText) findViewById(R.id.messageText);
+                final String message = messageText.getText().toString();
+
+                List<MimePart> parts = new ArrayList<>();
+                parts.add(new MimePart("text/plain", "", message.getBytes()));
+                MimeMessage mimeMessage = new MimeMessage(parts);
+                channelService.publish(nucleusService.getCurrentChannelRef(),
+                                       mimeMessage,
+                                       new ChannelPublishMessageResponseHandler() {
+                                           @Override
+                                           public void onSuccess(long offset, long eventID) {
+                                               Log.i(LOG_TAG, "Successfully published message to channel - " + message);
+                                           }
+
+                                           @Override
+                                           public void onFailure(OperationStatus operationStatus, int statusCode, String errMsg) {
+                                               Log.e(LOG_TAG, "Failed to publish message to channel - " + message + ". " +
+                                                       operationStatus + " (" + statusCode + ") - " + errMsg);
+                                           }
+                                       });
+            }
+        });
 
         BottomNavigationView navigation = (BottomNavigationView) findViewById(R.id.navigation);
         navigation.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
@@ -157,6 +233,15 @@ public class MainActivity extends AppCompatActivity {
         redBar.setProgress(app.getRedLED());
         greenBar.setProgress(app.getGreenLED());
         blueBar.setProgress(app.getBlueLED());
+
+        hView = (TextView) findViewById(R.id.humidityTextView);
+        hView.setText(String.valueOf(0));
+
+        tView = (TextView) findViewById(R.id.tempTextView);
+        tView.setText(String.valueOf(0));
+
+        tsView = (TextView) findViewById(R.id.timestampTextView);
+        tsView.setText(String.valueOf(0));
 
         ensureStarted.postDelayed(ensureRunnable, 1000);
     }
@@ -186,5 +271,10 @@ public class MainActivity extends AppCompatActivity {
         else {
             nucleusService.enableLocationServices(true);
         }
+    }
+
+    public String getLEDString() {
+        return String.format(Locale.getDefault(), "%d,%d,%d",
+                             redBar.getProgress(), greenBar.getProgress(), blueBar.getProgress());
     }
 }

@@ -489,7 +489,7 @@ public class BeagleBone implements NucleusClientListener
     }
 
     @Override
-    public void onMemberDatapointChange(Member member) {
+    public void onDatapointChange(Datapoint datapoint) {
 
     }
 

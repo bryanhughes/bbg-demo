@@ -347,8 +347,10 @@ public class BBGDemoApplication extends Application implements NucleusClientList
         List<TopicOffset> offsets = new ArrayList<>();
         offsets.add(new TopicOffset(channelRef, TopicType.EChannelMessage, -1, 1));
         offsets.add(new TopicOffset(channelRef, TopicType.EProperty, -1, 1));
+        offsets.add(new TopicOffset(channelRef, TopicType.EDatapoint, -1, 1));
         joinOptions.put(JoinOption.OFFSET_LIST, offsets);
 
+        final long stime = System.currentTimeMillis();
         channelService.joinChannel(channelRef, joinOptions, new ChannelJoinResponseHandler() {
             @Override
             public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
@@ -360,7 +362,8 @@ public class BBGDemoApplication extends Application implements NucleusClientList
 
             @Override
             public void onSuccess(final String channelRef, List<TopicOffset> offsets) {
-                Log.i(LOG_TAG, "joinChannel.onSuccess");
+                Log.i(LOG_TAG, "Took " + (System.currentTimeMillis() - stime) + "ms to join channel " + channelRef);
+
                 channelService.switchChannel(channelRef, new GeneralResponseHandler() {
                     @Override
                     public void onSuccess() {
@@ -600,17 +603,17 @@ public class BBGDemoApplication extends Application implements NucleusClientList
     }
 
     @Override
-    public void onMemberDatapointChange(Member member) {
-        Datapoint datapoint = member.getDatapoint(0);
+    public void onDatapointChange(Datapoint datapoint) {
         if ( (datapoint != null) && (datapoint.getProtoName() != null) && "EnvData".equals(datapoint.getProtoName()) ) {
             try {
                 EnvDataProto.EnvData edata = EnvDataProto.EnvData.parseFrom(datapoint.getProtobuffer());
+                EnvData envData = new EnvData(edata);
 
                 Intent broadcast = new Intent();
                 broadcast.setAction(BROADCAST_SENSOR_ACTION);
-                broadcast.putExtra("h", edata.humidity);
-                broadcast.putExtra("t", edata.temperature);
-                broadcast.putExtra("ts", edata.timestamp);
+                broadcast.putExtra("h", envData.getHumidity());
+                broadcast.putExtra("t", envData.getTemperature());
+                broadcast.putExtra("ts", envData.getTimestamp());
 
                 sendBroadcast(broadcast);
             }

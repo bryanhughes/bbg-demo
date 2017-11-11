@@ -403,7 +403,7 @@ public class Console implements NucleusClientListener {
     }
 
     @Override
-    public void onMemberDatapointChange(Member member) {
+    public void onDatapointChange(Datapoint datapoint) {
 
     }
 
