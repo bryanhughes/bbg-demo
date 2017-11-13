@@ -104,9 +104,11 @@ As the documentation explains, the mounted device should set up a USB network be
 address of the device will be 192.168.7.2.
 
 #### Configuring the Wifi
-There are instructions for configuring the wifi on the Beaglebone by selecting the AP and then configuring the
-correct SID and passphrase. This does not always work. If it doesnt, the you will need to configure it manually
-by logging onto the device and type the following
+There are [instructions](https://beagleboard.org/green-wireless) for configuring the wifi on the Beaglebone by connecting 
+to the SeeedStudio BeagleBone Green Wireless AP and then selecting your SSID and entering your passphrase.
+
+This does not always work. If it doesnt, the you will need to configure it manually by logging onto the device using either
+screen or ssh, and type the following
 
 	$ connmanctl (invoke utility)
 	connmanctl> tether wifi off (disable tethering)
@@ -144,7 +146,9 @@ Next, you will need to have Java 8 JDK [installed on your BBG](http://beagleboar
 
 
 ## Building your Project
-Everything you need to build, or rebuild the project, is included in this project. The project uses Gradle and includes a `build.gradle`. If you are using Eclipse or IntelliJ, simply import the project from sources.
+Everything you need to build, or rebuild the project, is included in this project. The project uses Gradle and 
+includes a `build.gradle`. If you are using Eclipse or IntelliJ, simply import the project from sources. Please note, this
+project is to be built on your laptop, not the Beaglebone. 
 
 The tasks to build the project are: 
 
@@ -166,18 +170,27 @@ to the SpaceTime demo server.
 Also, if you want your device to be at a specific location in the world, be sure to edit the `local.properties` file and 
 set the latitude and longitude of your station, along with its name, and a site name.
 
-To find you location, simply open [https://www.google.com/maps](https://www.google.com/maps) and find your location on the map. Zoom in to get a precise location (or enter the address). Click and hold for a moment and you will get the latitude and longitude coordinates of that location. 
+To find you location, simply open [https://www.google.com/maps](https://www.google.com/maps) and find your location on the map. 
+Zoom in to get a precise location (or enter the address). Click and hold for a moment and you will get the latitude and longitude 
+coordinates of that location.
 
-You will need two terminal windows open. In the first window, start up the Python scripts that will drive the sensors 
+To test that everything is working, run each of the components in two separate terminal windows. In the first window, start 
+up the Python scripts that will drive the sensors 
 
 	$ sudo python iot_demo.py
 	
 In the second window, start up that Java application
 
-    $ sudo ./run_bbg
+    $ sudo ./run_bbg_java.sh
     
 Your Beaglebone Green should now be reporting the temperature and humidity of your location and should be displaying it on
 the OLED screen. Please note that the LED flashes on startup. It does take a minute to startup.
+
+Once you have confirmed everything is in working order, CTRL-C out of each of the apps and then in a single terminal run 
+the single script:
+
+    $ sudo ./run_bbg.sh
+    
 
 ![assembled_off_top_1](docs/images/assembled_on_top.jpg)
 The assembled device running
