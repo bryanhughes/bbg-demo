@@ -6,16 +6,25 @@ to work with because it comes pre-loaded with Debian!
 
 NOTE: This README assumes you are familiar with the Beaglebone Green Wireless.
 
-This project demonstrates how easy it is to build a Beaglebone Green IoT device and connect to the SpaceTime IoT Warp platform. This code has been tested with a Beaglebone Green Wireless, with a Grove Chainable RBG LED and Grove Temperature Sensor.
+This project demonstrates how easy it is to build a Beaglebone Green IoT device and connect to the SpaceTime IoT Warp platform. 
+This code has been tested with a Beaglebone Green Wireless, with a Grove Chainable RBG LED, Grove Temperature & Humidity Sensor Pro,
+and the Grove OLED 64x64 Display.
 
 If you are starting from scratch, please follow the instructions for [Getting Started](http://beagleboard.org/getting-started). Once you have your Beaglebone connected and accessible, go ahead and SSH onto the device.
 
-This project is composed of several Python scripts, Java components, and an Android app. The Python scripts do the actual
-controlling of the Beaglebone sensors. The main script is `iot_demo.py`. This needs to be run as `sudo` in the background.
-The Java components include the java application that implements the Nucleus SDK that provides connectivity and reads sensor data
-and writes out control changes. Their also a Java Console application that allows you to send messages and LED changes
-to the Beaglebone. You can run this from any computer. The Android application is a very simple mobile application that allows
-you to control the Beaglebone.
+This project is composed of several Python scripts, a Java app, and an Android app. The Python scripts do the actual
+controlling of the Beaglebone sensors. The main script to run all the parts in the background is `run_bbg.sh`. This simply
+runs the main python script `iot_demo.py` and the java application started by `run_bbg_java.sh`. This needs to be run as `sudo`.
+
+It is possible to run the the python `iot_demo.py` and `run_bbg_java.sh` in separate terminals if you are interested in the
+console output. Please note that `run_bbg_java.sh` has an option to set the log level. The default is `severe`. These are
+standard Java log levels. If you want more detail, try `info`.
+
+The Java application implements the Nucleus SDK that provides connectivity and reads sensor data
+and writes out control changes. Their is also a standalone java Console application that allows you to send messages and LED changes
+to the Beaglebone from the command line of any computer. Simply unzip the release onto the other computer in any working directory and 
+then type `./run_console.sh`. The Android application is a very simple mobile application that allows
+you to control the LED on the Beaglebone, as well as send messages to be displayed on the OLED screen.
 
 This tutorial goes over assembling the kit and getting started with a dashboard of your own. Specifically, you will:
 
