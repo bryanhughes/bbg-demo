@@ -12,9 +12,11 @@ and the Grove OLED 64x64 Display.
 
 If you are starting from scratch, please follow the instructions for [Getting Started](http://beagleboard.org/getting-started). Once you have your Beaglebone connected and accessible, go ahead and SSH onto the device.
 
-This project is composed of several Python scripts, a Java app, and an Android app. The Python scripts do the actual
+This project is composed of several Python scripts, two Java apps, and an Android app. The Python scripts do the actual
 controlling of the Beaglebone sensors. The main script to run all the parts in the background is `run_bbg.sh`. This simply
 runs the main python script `iot_demo.py` and the java application started by `run_bbg_java.sh`. This needs to be run as `sudo`.
+
+    $ sudo ./run_bbg.sh
 
 It is possible to run the the python `iot_demo.py` and `run_bbg_java.sh` in separate terminals if you are interested in the
 console output. Please note that `run_bbg_java.sh` has an option to set the log level. The default is `severe`. These are
@@ -34,14 +36,15 @@ developed with the Warp IoT SDK
 * Read from Grove plug-and-play sensors
 * Send collected data to a real-time mobile application developed with the Warp IoT SDK
 
-Let's get started!
-
 #### What Exactly Can You Do?
 This project demonstrates how to stream telemetry data, temperature and humidity, from the Beaglebone Green Wireless 
 to the SpaceTime IoT Warp Platform via the Warp IoT SDK. It also demonstrates how to send back messages to the device 
 to control it. Their are two elements on the Beaglebone that you can control, the LED light and the message displayed 
 on the OLED screen. When there is no specific message being displayed, or after 5 minutes of displaying the custom 
 message, the device switches back to display the temperature and humidity.
+
+Let's get started!
+
 
 ### Connecting the Hardware
 The parts to build this project include:
@@ -70,9 +73,9 @@ for connecting sensors to the Beaglebone so that we can read their values and tu
 ![bbg_closeup](docs/images/bbg_closeup.jpg)
 
 First, connect the OLED Display to the IC2 Grove Connector on the Beaglebone Green Wireless development board. 
-Next, connect the Temperature & Humidity Sensor Pro to the UART Grove Connector on the Beaglebone Green Wireless development board.
+Next, connect the Temperature & Humidity Sensor Pro to the UART Grove Connector to the right on the Beaglebone Green Wireless development board.
 
-![grove_cape](docs/images/grove_cape.jpg)
+![grove_cape](docs/images/grove_cape.JPG)
 Attaching the Grove cape is super easy - just line up the curved side of the cape with the curved side of the 
 Beaglebone Green cape, make sure the P8 and P9 headers are aligned with the cape's pins and gently press down. 
 
