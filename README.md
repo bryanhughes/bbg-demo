@@ -1,6 +1,9 @@
-## Beaglebone Green Demo
+## Beaglebone Green Wireless Demo
+The Beaglebone Green Wireless is a fantastic piece of hardware that is extremely powerful. And now it's easier than ever 
+to work with because it comes pre-loaded with Debian!
 
-<br>
+![bbg](docs/images/bbg.jpg)
+
 NOTE: This README assumes you are familiar with the Beaglebone Green Wireless.
 
 This project demonstrates how easy it is to build a Beaglebone Green IoT device and connect to the SpaceTime IoT Warp platform. This code has been tested with a Beaglebone Green Wireless, with a Grove Chainable RBG LED and Grove Temperature Sensor.
@@ -14,12 +17,22 @@ and writes out control changes. Their also a Java Console application that allow
 to the Beaglebone. You can run this from any computer. The Android application is a very simple mobile application that allows
 you to control the Beaglebone.
 
-#### What Exactly Can You Do?
-This project demonstrates how to stream telemetry data, temperature and humidity, from the Beaglebone Green to the SpaceTime IoT Warp Platform via the
-SDK. It also demonstrates how to send back messages to the device to control it. Their are two elements on the Beaglebone that
-you can control, the LED light and the message displayed on the OLED screen. When there is no specific message being displayed,
-or after 5 minutes of displaying the custom message, the device switches back to display the temperature and humidity.
+This tutorial goes over assembling the kit and getting started with a dashboard of your own. Specifically, you will:
 
+* Assemble the Beaglebone Green Wireless with Seeed Grove Cape
+* Installing the release which includes python scripts to control the sensors and the java app to connect to Nucleus 
+developed with the Warp IoT SDK
+* Read from Grove plug-and-play sensors
+* Send collected data to a real-time mobile application developed with the Warp IoT SDK
+
+Let's get started!
+
+#### What Exactly Can You Do?
+This project demonstrates how to stream telemetry data, temperature and humidity, from the Beaglebone Green Wireless 
+to the SpaceTime IoT Warp Platform via the Warp IoT SDK. It also demonstrates how to send back messages to the device 
+to control it. Their are two elements on the Beaglebone that you can control, the LED light and the message displayed 
+on the OLED screen. When there is no specific message being displayed, or after 5 minutes of displaying the custom 
+message, the device switches back to display the temperature and humidity.
 
 ### Connecting the Hardware
 The parts to build this project include:
@@ -36,7 +49,26 @@ The Starter Kit
 The OLED Display and LED Chainable Sensor are part of the Starter Kit
 
 ![assembled_off_top_1](docs/images/assembled_off_top_1.jpg)
-The assembled device
+The assembled device top view
+
+![assembled_off_rear](docs/images/assembled_off_rear.jpg)
+The assembled device rear view
+
+#### Connecting the Sensors
+An internet connected device is only as great as what you do with it! The Grove cape gives us a plug-and-play interface 
+for connecting sensors to the Beaglebone so that we can read their values and turn right around and stream them.
+
+![bbg_closeup](docs/images/bbg_closeup.jpg)
+
+First, connect the OLED Display to the IC2 Grove Connector on the Beaglebone Green Wireless development board. 
+Next, connect the Temperature & Humidity Sensor Pro to the UART Grove Connector on the Beaglebone Green Wireless development board.
+
+![grove_cape](docs/images/grove_cape.jpg)
+Attaching the Grove cape is super easy - just line up the curved side of the cape with the curved side of the 
+Beaglebone Green cape, make sure the P8 and P9 headers are aligned with the cape's pins and gently press down. 
+
+Finally, find the GPIO grove connector marked 50 and attach the LED Chainable Sensor
+![led_connection](docs/images/led_connection.jpg)
 
 
 #### Logging on using screen
