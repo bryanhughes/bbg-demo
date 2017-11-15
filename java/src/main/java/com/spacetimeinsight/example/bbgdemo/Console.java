@@ -11,8 +11,8 @@ import com.spacetimeinsight.nucleuslib.types.DeviceType;
 import com.spacetimeinsight.nucleuslib.types.HealthType;
 import com.spacetimeinsight.nucleuslib.types.OperationStatus;
 
-import javax.xml.bind.DatatypeConverter;
 import java.io.*;
+import java.util.Base64;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,10 +20,9 @@ import java.util.Scanner;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.logging.Handler;
-import java.util.logging.Level;
-import java.util.logging.LogManager;
-import java.util.logging.Logger;
+import java.util.logging.*;
+
+import static com.spacetimeinsight.example.bbgdemo.Driver.nucleusClient;
 
 public class Console implements NucleusClientListener {
     private static final String LOG_TAG = Console.class.getName();
@@ -133,7 +132,7 @@ public class Console implements NucleusClientListener {
                 if ( needsProfile ) {
                     ClientDevice clientDevice = Driver.nucleusClient.getClientDevice();
                     if (Driver.imageData != null) {
-                        clientDevice.setProfileImage(DatatypeConverter.parseBase64Binary(Driver.imageData), Driver.imageType);
+                        clientDevice.setProfileImage(Base64.getDecoder().decode(Driver.imageData), Driver.imageType);
                     }
                     deviceService.setProfile(new GeneralResponseHandler() {
                         @Override
@@ -160,6 +159,26 @@ public class Console implements NucleusClientListener {
                 System.exit(-1);
             }
         });
+    }
+
+    private void renewSession()  {
+        System.out.println("Renewing session...");
+        DeviceService deviceService = nucleusClient.getDeviceService();
+        try {
+            deviceService.renewSession(new DeviceSessionResponseHandler() {
+                @Override
+                public void onSuccess(boolean needsProfile, List<String> activeMemberships) {
+                    System.out.println("Successfully renewed device session.");
+                }
+
+                @Override
+                public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg) {
+                    System.out.println("Failed to renew device session. (" + statusCode + ") - " + errorMsg);
+                }
+            });
+        } catch ( NucleusException e ) {
+            e.printStackTrace();
+        }
     }
 
     private void joinOrCreateChannel(final String channelName) {
@@ -228,7 +247,7 @@ public class Console implements NucleusClientListener {
     }
 
     private void scanLoop(String channelRef) {
-        System.out.println("Enter command: (m <message> or l <led comma separated values R,G,B>");
+        System.out.println("Enter command: (m <message> | l <led comma separated values R,G,B> | s <shutdown level>");
         Runnable r = () -> {
             while (!Thread.currentThread().isInterrupted()) {
                 scan(channelRef);
@@ -274,10 +293,26 @@ public class Console implements NucleusClientListener {
                 }
             });
         }
+        else if ( c == 's' ) {
+            String m = message.substring(1).trim();
+            Channel channel = Driver.nucleusClient.getChannel(channelRef);
+            channel.setProperty("shutdown", m, new GeneralResponseHandler() {
+                @Override
+                public void onSuccess() {
+                    System.out.println("[ok] Device will shutdown");
+                }
+
+                @Override
+                public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg) {
+                    System.out.println("!!!! Failed to send message - (" + statusCode + ") " + errorMsg);
+                }
+            });
+        }
         else {
             System.out.println("commands are");
             System.out.println("   m <message to send>");
             System.out.println("   l x, y, z (LED values 0-255)");
+            System.out.println("   s now | <time in seconds) - shutdown the device");
         }
     }
 
@@ -343,8 +378,18 @@ public class Console implements NucleusClientListener {
     }
 
     @Override
-    public void handleRequestError(String s, OperationStatus operationStatus, int i, String s1) {
+    public void handleRequestError(String command, OperationStatus operationStatus, int statusCode, String errorMsg) {
+        System.out.println("Handling request error. Command = " + command +
+                                   ", operationStatus = " + operationStatus.toString() +
+                                   ", statusCode = " + statusCode +
+                                   ", errorMessage = " + errorMsg);
 
+        if ( OperationStatus.INVALID_DEVICE_TOKEN.equals(operationStatus) ) {
+            renewSession();
+        }
+        else {
+            System.out.println("Handling request error. " + command + " (" + statusCode + ") " + errorMsg);
+        }
     }
 
     @Override
