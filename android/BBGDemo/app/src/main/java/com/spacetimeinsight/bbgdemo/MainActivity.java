@@ -62,8 +62,13 @@ public class MainActivity extends AppCompatActivity {
                     intent = new Intent(getApplicationContext(), MainActivity.class);
                     startActivity(intent);
                     return true;
+                case R.id.navigation_chat:
+                    intent = new Intent(getApplicationContext(), ChatActivity.class);
+                    startActivity(intent);
+                    return true;
                 case R.id.navigation_channel:
-                    // Show channel selector activity
+                    intent = new Intent(getApplicationContext(), ChannelActivity.class);
+                    startActivity(intent);
                     return true;
                 case R.id.navigation_partition:
                     intent = new Intent(getApplicationContext(), CreatePartitionActivity.class);
@@ -180,6 +185,9 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        BBGDemoApplication app = (BBGDemoApplication) getApplication();
+        app.setCurrentActivity(this);
+
         redBar = (SeekBar) findViewById(R.id.redSeekBar);
         greenBar = (SeekBar) findViewById(R.id.greenSeekBar);
         blueBar = (SeekBar) findViewById(R.id.blueSeekBar);
@@ -218,11 +226,30 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        Button shutdownButton = (Button) findViewById(R.id.shutdownButton);
+        shutdownButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                NucleusService nucleusService = BBGDemoApplication.getNucleusService();
+                Channel channel = nucleusService.getCurrentChannel();
+
+                channel.setProperty("shutdown", "now", new GeneralResponseHandler() {
+                    @Override
+                    public void onSuccess() {
+                        BBGDemoApplication.showToast(getApplicationContext(), "Device will now shutdown");
+                    }
+
+                    @Override
+                    public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg) {
+                        Log.e(LOG_TAG, "Failed to set shutdown property. " + operationStatus + " : (" + statusCode + ") - " +
+                                errorMsg);
+                    }
+                });
+            }
+        });
+
         BottomNavigationView navigation = (BottomNavigationView) findViewById(R.id.navigation);
         navigation.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
-
-        BBGDemoApplication app = (BBGDemoApplication) getApplication();
-        app.setCurrentActivity(this);
     }
 
     @Override

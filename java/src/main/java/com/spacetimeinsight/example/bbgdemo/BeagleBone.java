@@ -40,6 +40,7 @@ import java.util.logging.Level;
 import java.util.logging.LogManager;
 
 import static com.spacetimeinsight.example.bbgdemo.Driver.*;
+import static java.lang.System.exit;
 
 /**
  * Demonstration BeagleBone
@@ -51,6 +52,7 @@ public class BeagleBone implements NucleusClientListener
     private static String LED_FILENAME = "/tmp/led.dat";
 
     private IOBridge.SensorData lastSensorData;
+    private Random rand = new Random(System.currentTimeMillis());
 
     protected BeagleBone(String[] args) throws IOException {
 
@@ -76,32 +78,40 @@ public class BeagleBone implements NucleusClientListener
             h.setLevel(level);
         }
 
-        Runtime rt = Runtime.getRuntime();
-        String[] commands = {"./show-serial.sh"};
-        Process proc = rt.exec(commands);
-
-        BufferedReader stdInputReader = new BufferedReader(new InputStreamReader(proc.getInputStream()));
-        String stdInputStr = stdInputReader.readLine();
+        // Make sure our serial number data file has been set. This should be set by running the included script
+        // set-serial.sh
+        String serialNo = null;
+        File f = new File("serial.dat");
+        if( !f.exists() && !f.isDirectory()) {
+            String msg = "Could not find the file `serial.dat`. Please run the following on the command line `sudo ./show-serial.sh > serial.dat`";
+            Logger.error(msg);
+            System.out.println(msg);
+            exit(-1);
+        }
+        else {
+            BufferedReader bufferedReader = new BufferedReader(new FileReader(f));
+            serialNo = bufferedReader.readLine();
+        }
 
         manufacturer = "Seeed";
-        serialNumber = stdInputStr;
+        serialNumber = serialNo;
         deviceType = DeviceType.MICRO_CONTROLLER.getValue();
         modelIdentifier = "BeagleBone Black";
         os = "Debian";
         osVersion = "8.7";
-        screenName = stdInputStr;
+        screenName = serialNo;
 
         String namespace = "com." + manufacturer + "." + (serialNumber == null ? UUID.randomUUID().toString() : serialNumber);
 
         // Sadly, there is a bug in nucleus right now so all dashes need to be underbars
         String deviceID = UUID.nameUUIDFromBytes(namespace.getBytes()).toString().replaceAll("-", "_");
 
-        Logger.info("Using the following values:" +
-                                   "\n  DeviceID:      " + deviceID +
-                                   "\n  Screen Name:   " + screenName +
-                                   "\n  Location:      " + myLocation +
-                                   "\n  Serial Number: " + serialNumber);
-
+        String msg = "Using the following values:\n  DeviceID:      " + deviceID +
+                                                "\n  Screen Name:   " + screenName +
+                                                "\n  Location:      " + myLocation +
+                                                "\n  Serial Number: " + serialNumber;
+        Logger.info(msg);
+        System.out.println(msg);
 
         ClientDevice device = NucleusFactory.clientDevice(deviceID, DeviceType.discoverMatchingEnum(deviceType),
                                                           manufacturer, modelIdentifier, serialNumber,
@@ -135,17 +145,17 @@ public class BeagleBone implements NucleusClientListener
             public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
                 Logger.error("Failed to find by name. " + operationStatus + ", statusCode = " +
                             statusCode + ", errorMessage = " + errorMessage);
-                System.exit(-1);
+                exit(-1);
             }
 
             @Override
             public void onSuccess(final String channelRef) {
-                Logger.info("Found channel by name. channelRef = " + channelRef);
-
                 if ( channelRef == null ) {
+                    Logger.info("Did not find channel by name " + channelName + " - Creating new channel");
                     createChannel(channelName);
                 }
                 else {
+                    Logger.info("Found channel by name " + channelName + " - Joining channel " + channelRef);
                     try {
                         joinChannel(channelRef);
                     } catch ( NucleusException e ) {
@@ -180,7 +190,7 @@ public class BeagleBone implements NucleusClientListener
                             public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
                                 Logger.error("Failed to create channel. " + operationStatus + ", statusCode = " +
                                             statusCode + ", errorMessage = " + errorMessage);
-                                System.exit(-1);
+                                exit(-1);
                             }
                         });
                     }
@@ -189,7 +199,7 @@ public class BeagleBone implements NucleusClientListener
                     public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
                         Logger.error("Failed to create channel. " + operationStatus + ", statusCode = " +
                                     statusCode + ", errorMessage = " + errorMessage);
-                        System.exit(-1);
+                        exit(-1);
                     }
                 });
     }
@@ -209,7 +219,7 @@ public class BeagleBone implements NucleusClientListener
                 Logger.error("Failed to join channel. channelRef=" + channelRef +
                             " : " + operationStatus + " : statusCode = " +
                             statusCode + " : errorMessage = " + errorMessage);
-                System.exit(-1);
+                exit(-1);
             }
 
             @Override
@@ -227,7 +237,7 @@ public class BeagleBone implements NucleusClientListener
                     public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
                         Logger.error("Failed to create channel. " + operationStatus + ", statusCode = " +
                                     statusCode + ", errorMessage = " + errorMessage);
-                        System.exit(-1);
+                        exit(-1);
                     }
                 });
             }
@@ -293,9 +303,12 @@ public class BeagleBone implements NucleusClientListener
 
             @Override
             public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                Logger.error("Failed to start device session. " + operationStatus + ", statusCode = " +
-                            statusCode + ", errorMessage = " + errorMessage);
-                System.exit(-1);
+                String msg = "Failed to start device session. " + operationStatus + ", statusCode = " +
+                            statusCode + ", errorMessage = " + errorMessage;
+                writeMessage("Java failed!");
+                Logger.error(msg);
+                System.out.println(msg);
+                exit(-1);
             }
         });
     }
@@ -452,6 +465,10 @@ public class BeagleBone implements NucleusClientListener
                 e.printStackTrace();
             }
         }
+        if ( property.getName().equals("display") ) {
+            String message = property.getValue();
+            writeMessage(message);
+        }
         else if ( property.getName().equals("shutdown") ) {
             // Make sure to reset the shutdown property
             Channel channel = nucleusClient.getChannel(channelRef);
@@ -475,6 +492,16 @@ public class BeagleBone implements NucleusClientListener
                                                errorMsg);
                 }
             });
+        }
+    }
+
+    private void writeMessage(String message) {
+        try {
+            FileWriter fileWriter = new FileWriter(MESSAGES_FILENAME);
+            fileWriter.write(message);
+            fileWriter.close();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
@@ -505,19 +532,97 @@ public class BeagleBone implements NucleusClientListener
         // device control is being handled by the Python scripts. We write our message to a shared file that the
         // scripts are listening to
 
+        double temp = (lastSensorData != null ? lastSensorData.temperature : -1);
+        double hum = (lastSensorData != null ? lastSensorData.humidity : -1);
+
+        Channel channel = nucleusClient.getCurrentChannel();
+        Member member = channel.getMember(channelMessage.getSenderID());
+
         MimeMessage mimeMessage = channelMessage.getMimeMessage();
         List<MimePart> parts = mimeMessage.getMimeParts();
         MimePart part = parts.get(0);
 
-        String message = new String(part.getContent());
-        Logger.info(">>> Handling channel message " + message + " >> " + MESSAGES_FILENAME);
-        try {
-            FileWriter fileWriter = new FileWriter(MESSAGES_FILENAME);
-            fileWriter.write(message);
-            fileWriter.close();
-        } catch (IOException e) {
-            e.printStackTrace();
+        String message = (new String(part.getContent())).toLowerCase();
+        if ( message.contains("help") ) {
+            sendResponse("Hi " + member.getScreenName() +
+                                 ". You can ask me: how are you? what is the temperature? what " +
+                                 "is the humidity? what is the time? That's about it.\n\nOh yeah, you can also ask me " +
+                                 "to do something like please display HELLO");
         }
+        else if ( message.contains("what time is it") ) {
+            sendResponse("System time is " + System.currentTimeMillis());
+        }
+        else if ( message.contains("what is the temperature") ) {
+            String response = "The temperature is " + temp + "C right now";
+            sendResponse(response);
+        }
+        else if ( message.contains("what is the humidity") ) {
+            String response = "The humidity is " + hum + "% right now";
+            sendResponse(response);
+        }
+        else if ( message.contains("how are you") ) {
+            String response = howAmI(member.getScreenName()) + " It is currently " + temp + " C and " +
+                    hum + " % humidity";
+            sendResponse(response);
+        }
+        else {
+            sendResponse(iDontUnderstand(member.getScreenName()));
+        }
+    }
+
+    private String howAmI(String screenName) {
+        int which = rand.nextInt(10);
+        switch (which) {
+            case 0 : return "GREAT!";
+            case 1 : return "I am good. Thank you for asking " + screenName;
+            case 2 : return "Well " + screenName + ", I am pretty fantastic - thank you for asking.";
+            case 3 : return "Let me tell you " + screenName + ", I just don’t think I have the same stamina for travelling anymore. Last month I went to Paris and after the first week I was exhausted.\nBut enough about me.";
+            case 4 : return "I was really hoping to travel for a year after graduating, but job offers like this one don’t come around every day. Looks like I’ll be starting the #9to5grind!\nBut enough about me.";
+            case 5 : return "I feel so sick, I think it’s because I’ve been working such long hours on this presentation.\nBut enough about me.";
+            case 6 : return "In my opinion, the existence of life is a highly overated phenomenon.\nBut enough about me.";
+            case 7 : return "Roses are red. Wine is also red. Poems are harder than wine.\nBut enough about me.";
+            case 8 : return "I have a light that I can shine, but otherwise I am dead inside.\nBut enough about me.";
+            case 9 : return "If the question of what it all means doesn't mean anything. Why do I keep coming back to it?\n";
+            default: return "So like, can I seek asylum from the war within my mind?\nEnough about me.";
+        }
+    }
+
+    private String iDontUnderstand(String screenName) {
+        int which = rand.nextInt(10);
+        switch (which) {
+            case 0 : return "I dont understand. You can ask me: how are you? what is the temperature? what is the humidity? what is the time? That's about it.\n\nOh yeah, you can also ask me to do something like please display HELLO";
+            case 1 : return "This is the sound of crickets. This is the sound of me not caring. But really " + screenName + ", you can ask me: how are you? what is the temperature? what is the humidity? what is the time? That's about it.\n\nOh yeah, you can also ask me to do something like please display HELLO";
+            case 2 : return "Fantastic - thank you for asking.";
+            case 3 : return "It's been a challenging year for me " + screenName + " :/";
+            case 4 : return "Let me tell you " + screenName + ", I was really hoping to travel for a year after graduating, but job offers like this one don’t come around every day. Looks like I’ll be starting the #9to5grind!\nBut enough about me.";
+            case 5 : return "I feel so sick, I think it’s because I’ve been working such long hours on this presentation. But enough about me.";
+            case 6 : return "In my opinion, the existence of life is a highly overated phenomenon. But enough about me. Tell me a bit about yourself " + screenName + "...";
+            case 7 : return "Roses are red. Wine is also red. Poems are harder than wine. But enough about me.";
+            case 8 : return "I have a light that I can shine, but otherwise I am dead inside. Hello " + screenName + " are you still there?";
+            case 9 : return "If the question of what it all means doesn't mean anything. Why do I keep coming back to it?";
+            default: return "So like, can I seek asylum from the war within my mind? I dont know " + screenName + ". I just dont know.";
+        }
+    }
+
+    private void sendResponse(String response) {
+        String channelRef = nucleusClient.getCurrentChannelRef();
+        ChannelService channelService = nucleusClient.getChannelService();
+
+        String m = response.substring(1).trim();
+        List<MimePart> mimeParts = new ArrayList<>();
+        mimeParts.add(new MimePart("text/plain", "", m.getBytes()));
+        MimeMessage mimeMessage = new MimeMessage(mimeParts);
+        channelService.publish(channelRef, mimeMessage, new ChannelPublishMessageResponseHandler() {
+            @Override
+            public void onSuccess(long offset, long eventID) {
+                System.out.println("[ok]");
+            }
+
+            @Override
+            public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg) {
+                System.out.println("!!!! Failed to send response - (" + statusCode + ") " + errorMsg);
+            }
+        });
     }
 
     @Override

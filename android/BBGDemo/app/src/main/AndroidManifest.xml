@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.spacetimeinsight.bbgdemo">
+          package="com.spacetimeinsight.bbgdemo">
 
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
@@ -18,26 +18,29 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <activity
-            android:name="com.spacetimeinsight.bbgdemo.MainActivity"
+            android:name=".MainActivity"
             android:label="@string/app_name">
             <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
+                <action android:name="android.intent.action.MAIN"/>
+
+                <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-
-        <activity android:name="ProfileActivity">
+        <activity android:name=".ProfileActivity">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="com.spacetimeinsight.bbgdemo.MainActivity"/>
         </activity>
-        <activity android:name="ImagePickActivity">
+        <activity android:name=".ImagePickActivity">
         </activity>
-        <activity android:name="AboutActivity">
+        <activity android:name=".AboutActivity">
         </activity>
-        <activity android:name="CreatePartitionActivity">
+        <activity android:name=".CreatePartitionActivity">
         </activity>
-
+        <activity android:name=".ChatActivity">
+        </activity>
+        <activity android:name=".ChannelActivity">
+        </activity>
     </application>
 
 </manifest>

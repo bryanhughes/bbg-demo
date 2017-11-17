@@ -31,5 +31,7 @@
     <string name="profile">Profile</string>
     <string name="partition">Partition</string>
     <string name="channel">Channel</string>
+    <string name="chat_bot">Chat Bot</string>
+    <string name="say_something">Ask me something</string>
 
 </resources>

@@ -42,14 +42,14 @@ public class CreatePartitionActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_create_partition);
 
+        BBGDemoApplication app = (BBGDemoApplication) getApplication();
+        app.setCurrentActivity(this);
+
         NucleusService nucleusService = BBGDemoApplication.getNucleusService();
         if ( nucleusService.getApiKey() != null ) {
             TextView partitionKeyField = (TextView) findViewById(R.id.partitionKeyField);
             partitionKeyField.setText(nucleusService.getApiKey());
         }
-
-        BBGDemoApplication app = (BBGDemoApplication) getApplication();
-        app.setCurrentActivity(this);
     }
 
     public void createPartition(View view) {

@@ -3,4 +3,12 @@
     <color name="colorPrimary">#3F51B5</color>
     <color name="colorPrimaryDark">#303F9F</color>
     <color name="colorAccent">#FF4081</color>
+    <color name="actionbar_background_start">#ffffff</color>
+    <color name="actionbar_background_end">#e4eafd</color>
+    <color name="actionbar_background_item_pressed_start">#fde7c2</color>
+    <color name="actionbar_background_item_pressed_end">#EE7600</color>
+    <color name="actionbar_btn_pressed">#8e8e8e</color>
+    <color name="lightGray">#817f7f</color>
+    <color name="gray">#444440</color>
+
 </resources>

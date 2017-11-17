@@ -1,5 +1,6 @@
 package com.spacetimeinsight.bbgdemo;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Application;
 import android.app.ProgressDialog;
@@ -47,12 +48,16 @@ import com.spacetimeinsight.nucleuslib.types.TopicType;
 import com.spacetimeinsight.protobuf.nano.EnvDataProto;
 
 import java.net.URL;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
+import java.util.TimeZone;
+
 
 /**
  * (c) 2017 Space Time Insight
@@ -75,9 +80,10 @@ public class BBGDemoApplication extends Application implements NucleusClientList
     private int blueLED = 0;
 
     private GeoCircle myLocation = new GeoCircle(37.751685, -122.447621, 100);
-    private String channelName = "bbgdemo";
+    private String channelName = "bbgdemo01";
     private String shortDescription = "BBG Demo";
     private String longDescription = "2020 Third Street, San Francisco, CA";
+    private ChatArrayAdapter chatArrayAdapter;
 
     @Override
     public void onCreate() {
@@ -92,6 +98,8 @@ public class BBGDemoApplication extends Application implements NucleusClientList
 
                         nucleusService.setServerTarget(Config.PROTOCOL, Config.HOSTNAME, Config.PORT);
                         nucleusService.addListener(BBGDemoApplication.this);
+
+                        chatArrayAdapter = new ChatArrayAdapter(getApplicationContext(), R.layout.content_chat_message);
 
                         // Get our stashed profile information
                         SharedPreferencesHelper helper = new SharedPreferencesHelper(getApplicationContext());
@@ -340,7 +348,7 @@ public class BBGDemoApplication extends Application implements NucleusClientList
                 });
     }
 
-    private void joinChannel(final String channelRef) throws NucleusException {
+    void joinChannel(final String channelRef) throws NucleusException {
         final ChannelService channelService = nucleusService.getChannelService();
 
         Map<JoinOption, Object> joinOptions = new HashMap<>();
@@ -583,13 +591,33 @@ public class BBGDemoApplication extends Application implements NucleusClientList
     }
 
     @Override
-    public void onMessageRemoved(ChannelMessage channelMessage) {
-
+    public void onMessageRemoved(ChannelMessage message) {
+        Log.i(LOG_TAG, "onMessageRemoved. message=" + message + " eventID: " + message.getEventID() + " Protoname: " +
+                message.getProtoName());
+        if ( message.getProtoName().equals("MimeMessage") ) {
+            chatArrayAdapter.remove(message);
+            chatArrayAdapter.notifyDataSetChanged();
+        }
     }
 
     @Override
-    public void onMessageChange(ChannelMessage channelMessage) {
+    public void onMessageChange(ChannelMessage message) {
+        Date date = new Date(message.getTimestamp() * 1000);
+        @SuppressLint("SimpleDateFormat") DateFormat format = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
+        format.setTimeZone(TimeZone.getTimeZone("Etc/UTC"));
+        String formatted = format.format(date);
 
+        Log.i(LOG_TAG, "onMessageChange. message=" + message + " eventID: " + message.getEventID() + " Protoname: " +
+                message .getProtoName() + " Timestamp:" + formatted);
+
+        Channel channel = nucleusService.getCurrentChannel();
+        Member member = channel.getMember(message.getDelegateID());
+        System.out.println("Member=" + member);
+
+        if ( message.getProtoName().equals("MimeMessage") ) {
+            chatArrayAdapter.add(message);
+            chatArrayAdapter.notifyDataSetChanged();
+        }
     }
 
     @Override
@@ -626,21 +654,34 @@ public class BBGDemoApplication extends Application implements NucleusClientList
 
     @Override
     public void onMemberProfileChange(Member member) {
-
+        if ( currentActivity instanceof ChatActivity ) {
+            chatArrayAdapter.notifyDataSetChanged();
+        }
     }
 
     @Override
     public void onMemberStatusChange(Member member) {
-
+        // If our chat view is showing, we want to refresh the display icons
+        if ( currentActivity instanceof ChatActivity ) {
+            chatArrayAdapter.notifyDataSetChanged();
+        }
     }
 
     @Override
     public void onMemberPresenceChange(Member member) {
         System.out.println("member=" + member);
+        // If our chat view is showing, we want to refresh the display icons
+        if ( currentActivity instanceof ChatActivity ) {
+            chatArrayAdapter.notifyDataSetChanged();
+        }
     }
 
     @Override
     public void onMemberLocationChange(Member member, NucleusLocation nucleusLocation) {
 
+    }
+
+    public ChatArrayAdapter getChatAdapter() {
+        return chatArrayAdapter;
     }
 }

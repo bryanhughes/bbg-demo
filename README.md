@@ -46,7 +46,7 @@ message, the device switches back to display the temperature and humidity.
 Let's get started!
 
 
-### Connecting the Hardware
+### Connecting The Hardware
 The parts to build this project include:
 
 1) [Beaglebone Green Wireless Development Board](https://www.seeedstudio.com/Beaglebone-Green-Wireless-Development-Board%EF%BC%88TI-AM335x-WiFi%2BBT%EF%BC%89-p-2650.html)
@@ -66,7 +66,7 @@ The assembled device top view
 ![assembled_off_rear](docs/images/assembled_off_rear.jpg)
 The assembled device rear view
 
-#### Connecting the Sensors
+#### Connecting The Sensors
 An internet connected device is only as great as what you do with it! The Grove cape gives us a plug-and-play interface 
 for connecting sensors to the Beaglebone so that we can read their values and turn right around and stream them.
 
@@ -82,8 +82,16 @@ Beaglebone Green cape, make sure the P8 and P9 headers are aligned with the cape
 Finally, find the GPIO grove connector marked 50 and attach the LED Chainable Sensor
 ![led_connection](docs/images/led_connection.jpg)
 
+# WARNING
+```
+ALWAYS SHUTDOWN THE DEVICE EITHER BY PRESSING THE POWER BUTTON (see documentation on the Beaglebone) OR 
+BY ISSUING THE SHUTDOWN COMMAND. 
 
-#### Logging on using screen
+UNPLUGGING THE POWER CAN CAUSE DAMAGE.
+```    
+
+
+#### Logging On Using Screen
 When you connect the Beaglebone to your laptop using the USB, you have two options of connecting. The first is to use screen. 
 The second is to use SSH. Sometimes the usb network connection does not always get set up correctly, so the fallback
 is always the `screen` command. In either case, to confirm that the Beaglebone is mounted to your laptop, you should
@@ -99,11 +107,11 @@ in using screen where the device is identified as `tty.usbmodem1425`
 $ screen /dev/tty.usbmodem1425 115200
 ```
 
-#### Logging on using ssh
+#### Logging On Using SSH
 As the documentation explains, the mounted device should set up a USB network between the laptop and the device. The
 address of the device will be 192.168.7.2.
 
-#### Configuring the Wifi
+#### Configuring The Wifi
 There are [instructions](https://beagleboard.org/green-wireless) for configuring the wifi on the Beaglebone by connecting 
 to the SeeedStudio BeagleBone Green Wireless AP and then selecting your SSID and entering your passphrase.
 
@@ -123,7 +131,7 @@ Test your connection...
 
     $ ping yahoo.com	
 
-### Update the Software
+### Update The Software
 When you're in, update your software:
 
 ```
@@ -145,7 +153,7 @@ Your SSH connection should drop, but you can pull it back up as soon as the Beag
 Next, you will need to have Java 8 JDK [installed on your BBG](http://beagleboard.org/project/java/). 
 
 
-## Building your Project
+## Building Your Project
 Everything you need to build, or rebuild the project, is included in this project. The project uses Gradle and 
 includes a `build.gradle`. If you are using Eclipse or IntelliJ, simply import the project from sources. Please note, this
 project is to be built on your laptop, not the Beaglebone. 
@@ -153,6 +161,8 @@ project is to be built on your laptop, not the Beaglebone.
 The tasks to build the project are: 
 
 	./gradle clean build release
+	
+## Installing Your Release
 
 After you have built the project, navigate to the `release` directory to find the `bbg-demo-1.0.zip` file. You will need to
 secure copy this file to your Beaglebone Green. It is recommended that you make a bbgdemo directory on the Beaglebone Green
@@ -166,6 +176,8 @@ Next, edit the local.properties file and set the api_accountid, api_accounttoken
 of your account and partition from the nucleus application console. For the out of the box demo, simply copy the 
 `local-template.properties` file to `local.properties`. This will have the necessary credentials and tokens to connect
 to the SpaceTime demo server.
+
+    $ cp local-template.properties local.properties
 
 Also, if you want your device to be at a specific location in the world, be sure to edit the `local.properties` file and 
 set the latitude and longitude of your station, along with its name, and a site name.
@@ -191,14 +203,42 @@ the single script:
 
     $ sudo ./run_bbg.sh
     
+### Setting Up To Run On Boot
+Once you have determine everything is working as advertised, if you want the device to run on boot, copy the `rc.local` 
+to `/etc`. The script `/etc/rc.local` is for use by the system administrator. It is traditionally executed after all the 
+normal system services are started, at the end of the process of switching to a multiuser runlevel.
+
+    $ cp rc.local /etc 
+
+PLEASE NOTE: That if you are demoing or have moved this device to a new network, you will need to first set up the WiFi following
+the instructions above. In this case, after you set up the WiFi, issue a reboot from the command line.
+
+    $ sudo reboot 
 
 ![assembled_off_top_1](docs/images/assembled_on_top.jpg)
 The assembled device running
 
+
+## Using The Command Line Console
 To control the LED or send a message, back on your laptop, you can either unzip the `bbg-demo-1.0.zip` in the release directory, 
 or move it to another temp directory. In it, you will find another script called `bbg_console.sh`. If you run this, you can
 now send messages to your Beaglebone.
 
+    $ ./run_console.sh
+    Nov 14, 2017 10:44:27 AM com.spacetimeinsight.example.bbgdemo.Console main
+    INFO: Starting up beaglebone demo console...
+    Setting log level to severe
+    Successfully joined channel. channelRef=c32afd459_6729_4f10_b838_f8973fe173ff
+    Enter command: (m <message> , l <led comma separated values R,G,B>, or s to shutdown)
+    
+Enter `m` followed by a space and then the message, `l` (lowercase L) followed by a space and then comma separated RBG values,
+or `s` to shutdown the device.
+
+```
+ALWAYS SHUTDOWN THE DEVICE. UNPLUGGING THE POWER CAN CAUSE DAMAGE.
+```    
+
+## Using The Android App
 Finally, if you have an Android development phone and environment available, build the Android APK and deploy it onto your
 phone. This modest app will demonstrate temperature and humidity sensor data ingestion as well as how to control your 
 Beaglebone with your phone. You can change the LED values of the light (to turn it off give 0,0,0) as well as push a message

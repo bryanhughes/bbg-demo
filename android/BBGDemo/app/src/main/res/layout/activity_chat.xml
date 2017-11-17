@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:app="http://schemas.android.com/apk/res-auto"
+                android:layout_width="fill_parent"
+                android:layout_height="fill_parent"
+                android:orientation="vertical" >
+
+    <ListView
+        android:id="@+id/listView1"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_above="@+id/form"
+        android:layout_alignParentTop="true"
+        android:transcriptMode="alwaysScroll"
+        android:stackFromBottom="true">
+    </ListView>
+
+    <RelativeLayout
+            android:id="@+id/form"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@color/actionbar_background_item_pressed_start"
+            android:layout_alignParentBottom="true"
+            android:layout_alignParentStart="true">
+
+        <LinearLayout
+                android:orientation="horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:layout_alignParentTop="true"
+                android:layout_alignParentStart="true">
+
+            <EditText
+                android:id="@+id/messageText"
+                android:layout_width="0dp"
+                android:layout_height="35dp"
+                android:layout_alignParentRight="true"
+                android:layout_margin="10dp"
+                android:layout_marginBottom="10dp"
+                android:layout_marginLeft="10dp"
+                android:layout_marginRight="10dp"
+                android:layout_marginTop="10dp"
+                android:layout_toEndOf="@+id/takePictureButton"
+                android:layout_weight="0.94"
+                android:background="@color/actionbar_background_start"
+                android:ems="10"
+                android:gravity="center_vertical|fill"
+                android:hint="@string/say_something"
+                android:inputType="text"
+                android:paddingLeft="5dp"
+                android:paddingRight="5dp"/>
+        </LinearLayout>
+    </RelativeLayout>
+
+</RelativeLayout>

@@ -68,6 +68,7 @@ public class Console implements NucleusClientListener {
         File f = new File("serial.dat");
         if( !f.exists() && !f.isDirectory()) {
             serialNo = UUID.randomUUID().toString();
+            System.out.println("Running for the first time! Generated serial number: " + serialNo);
             FileWriter fileWriter = new FileWriter("serial.dat");
             fileWriter.write(serialNo);
             fileWriter.close();
@@ -86,7 +87,7 @@ public class Console implements NucleusClientListener {
         Driver.screenName = "console";
 
         String namespace = "com." + Driver.manufacturer + "." +
-                (Driver.serialNumber == null ? UUID.randomUUID().toString() : Driver.serialNumber);
+                (serialNo == null ? UUID.randomUUID().toString() : Driver.serialNumber);
 
         // Sadly, there is a bug in nucleus right now so all dashes need to be underbars
         String deviceID = UUID.nameUUIDFromBytes(namespace.getBytes()).toString().replaceAll("-", "_");
@@ -247,7 +248,10 @@ public class Console implements NucleusClientListener {
     }
 
     private void scanLoop(String channelRef) {
-        System.out.println("Enter command: (m <message> | l <led comma separated values R,G,B> | s <shutdown level>");
+        Channel channel = Driver.nucleusClient.getCurrentChannel();
+        System.out.println("Console Device ID: " + Driver.nucleusClient.getClientDevice().getDeviceID());
+        System.out.println("There are currently " + channel.getMembersCount() + " members in this channel.\n");
+        System.out.println("Enter command: (d <display message> | l <led comma separated values R,G,B> | q <ask question> | s <shutdown level>");
         Runnable r = () -> {
             while (!Thread.currentThread().isInterrupted()) {
                 scan(channelRef);
@@ -261,7 +265,7 @@ public class Console implements NucleusClientListener {
 
         String message = scanner.next();
         char c = message.charAt(0);
-        if ( c == 'm' ) {
+        if ( c == 'q' ) {
             String m = message.substring(1).trim();
             List<MimePart> mimeParts = new ArrayList<>();
             mimeParts.add(new MimePart("text/plain", "", m.getBytes()));
@@ -274,7 +278,22 @@ public class Console implements NucleusClientListener {
 
                 @Override
                 public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg) {
-                    System.out.println("!!!! Failed to send message - (" + statusCode + ") " + errorMsg);
+                    System.out.println("!!!! Failed to send question - (" + statusCode + ") " + errorMsg);
+                }
+            });
+        }
+        else if ( c == 'd' ) {
+            String m = message.substring(1).trim();
+            Channel channel = Driver.nucleusClient.getChannel(channelRef);
+            channel.setProperty("display", m, new GeneralResponseHandler() {
+                @Override
+                public void onSuccess() {
+                    System.out.println("[ok]");
+                }
+
+                @Override
+                public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg) {
+                    System.out.println("!!!! Failed to set property - (" + statusCode + ") " + errorMsg);
                 }
             });
         }
@@ -289,12 +308,15 @@ public class Console implements NucleusClientListener {
 
                 @Override
                 public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg) {
-                    System.out.println("!!!! Failed to send message - (" + statusCode + ") " + errorMsg);
+                    System.out.println("!!!! Failed to set property - (" + statusCode + ") " + errorMsg);
                 }
             });
         }
         else if ( c == 's' ) {
             String m = message.substring(1).trim();
+            if ( m.isEmpty() ) {
+                m = "now";
+            }
             Channel channel = Driver.nucleusClient.getChannel(channelRef);
             channel.setProperty("shutdown", m, new GeneralResponseHandler() {
                 @Override
@@ -304,15 +326,16 @@ public class Console implements NucleusClientListener {
 
                 @Override
                 public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg) {
-                    System.out.println("!!!! Failed to send message - (" + statusCode + ") " + errorMsg);
+                    System.out.println("!!!! Failed to set property - (" + statusCode + ") " + errorMsg);
                 }
             });
         }
         else {
             System.out.println("commands are");
-            System.out.println("   m <message to send>");
+            System.out.println("   d <display message>");
             System.out.println("   l x, y, z (LED values 0-255)");
-            System.out.println("   s now | <time in seconds) - shutdown the device");
+            System.out.println("   q <question to ask>");
+            System.out.println("   s now | <time in seconds> : shutdown the device");
         }
     }
 
