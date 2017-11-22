@@ -1,0 +1,56 @@
+{
+  "project_info": {
+    "project_number": "596607956426",
+    "project_id": "nucleus-sti"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:596607956426:android:e77c5b47548a917f",
+        "android_client_info": {
+          "package_name": "com.spacetimeinsight.bbgdemo"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "596607956426-t5ppbihfh7nead6jf0oki94ub5cvaipf.apps.googleusercontent.com",
+          "client_type": 3
+        },
+        {
+          "client_id": "596607956426-kakgbsd1i3uhjotqc2jp5kfqj81v0egu.apps.googleusercontent.com",
+          "client_type": 3
+        },
+        {
+          "client_id": "596607956426-vfdqv71ovllah34ailc7rvg2utpriri2.apps.googleusercontent.com",
+          "client_type": 3
+        },
+        {
+          "client_id": "596607956426-8sk5bgkk0j2ndm44skvkkqonsjuh4bfs.apps.googleusercontent.com",
+          "client_type": 3
+        },
+        {
+          "client_id": "596607956426-dng0cdg9f3q1oik7ncn8ai51hkgfmvgo.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDDyJfbO_R8zEjD6zj1XhKvd3IAAEXZFO4"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 1,
+          "other_platform_oauth_client": []
+        },
+        "ads_service": {
+          "status": 1
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

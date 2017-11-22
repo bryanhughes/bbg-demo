@@ -1,6 +1,5 @@
 package com.spacetimeinsight.bbgdemo;
 
-import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
@@ -10,7 +9,7 @@ import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
 import android.support.annotation.DrawableRes;
 import android.support.v4.app.ActivityCompat;
-import android.support.v7.app.AppCompatActivity;
+import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -22,6 +21,8 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.MapsInitializer;
 import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.UiSettings;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
@@ -41,16 +42,14 @@ import com.spacetimeinsight.nucleuslib.types.OperationStatus;
 
 import java.net.URL;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
-public class MapActivity extends AppCompatActivity implements OnMapReadyCallback, GoogleMap.OnMarkerClickListener,
-                                                              GoogleMap.OnCameraIdleListener, NucleusClientListener {
-    private static final String LOG_TAG = MapActivity.class.getName();
-    private static final String MAPVIEW_BUNDLE_KEY = "MapViewBundleKey";
+public class MapsActivity extends FragmentActivity implements OnMapReadyCallback,
+                                                              GoogleMap.OnMarkerClickListener,
+                                                              GoogleMap.OnCameraIdleListener,
+                                                              NucleusClientListener {
+    private static final String LOG_TAG = MapsActivity.class.getName();
 
     private MapView mapView;
     private GoogleMap map;
@@ -59,68 +58,37 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_map);
+        setContentView(R.layout.activity_maps);
 
-        BBGDemoApplication app = (BBGDemoApplication) getApplication();
-        app.setCurrentActivity(this);
+        NucleusService nucleusService = BBGDemoApplication.getNucleusService();
+        nucleusService.addListener(MapsActivity.this);
 
-        Bundle mapViewBundle = null;
-        if ( savedInstanceState != null ) {
-            mapViewBundle = savedInstanceState.getBundle(MAPVIEW_BUNDLE_KEY);
-        }
-        mapView = (MapView) findViewById(R.id.map_view);
-        mapView.onCreate(mapViewBundle);
-        mapView.getMapAsync(this);
-    }
-
-    @Override
-    protected void onPause() {
-        mapView.onPause();
-        super.onPause();
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if ( map != null ) {
-            showMembers();
-        }
-    }
-
-    @Override
-    protected void onStart() {
-        super.onStart();
+        // Obtain the SupportMapFragment and get notified when the map is ready to be used.
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
+        mapFragment.getMapAsync(this);
     }
 
     @Override
     protected void onDestroy() {
-        mapView.onDestroy();
         super.onDestroy();
+        NucleusService nucleusService = BBGDemoApplication.getNucleusService();
+        nucleusService.removeListener(MapsActivity.this);
     }
 
+    /**
+     * Manipulates the map once available.
+     * This callback is triggered when the map is ready to be used.
+     * This is where we can add markers or lines, add listeners or move the camera. In this case,
+     * we just add a marker near Sydney, Australia.
+     * If Google Play services is not installed on the device, the user will be prompted to install
+     * it inside the SupportMapFragment. This method will only be triggered once the user has
+     * installed Google Play services and returned to the app.
+     */
     @Override
-    public void onLowMemory() {
-        super.onLowMemory();
-        mapView.onLowMemory();
-    }
-
-    @Override
-    public void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-
-        Bundle mapViewBundle = outState.getBundle(MAPVIEW_BUNDLE_KEY);
-        if ( mapViewBundle == null ) {
-            mapViewBundle = new Bundle();
-            outState.putBundle(MAPVIEW_BUNDLE_KEY, mapViewBundle);
-        }
-
-        mapView.onSaveInstanceState(mapViewBundle);
-    }
-
-    @Override
-    public void onMapReady(GoogleMap map) {
-        if ( ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
-                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED ) {
+    public void onMapReady(GoogleMap googleMap) {
+        this.map = googleMap;
+        if ( ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+                ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED ) {
             // TODO: Consider calling ActivityCompat#requestPermissions here to request the missing permissions,
             // and then overriding
             //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
@@ -129,22 +97,25 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
             // for ActivityCompat#requestPermissions for more details.
             return;
         }
+        map.getUiSettings().setZoomControlsEnabled(true);
         map.setMyLocationEnabled(true);
         NucleusService nucleusService = BBGDemoApplication.getNucleusService();
         NucleusLocation location = nucleusService.getClientDevice().getCurrentLocation();
         if ( location == null ) {
-            Toast.makeText(MapActivity.this, "Location service is not available.", Toast.LENGTH_LONG).show();
+            Toast.makeText(MapsActivity.this, "Location service is not available.", Toast.LENGTH_LONG).show();
         }
 
-        this.map = map;
         MapsInitializer.initialize(this);
-        map.setOnMarkerClickListener(this);
-        map.setOnCameraIdleListener(this);
+        map.setOnMarkerClickListener(MapsActivity.this);
+        map.setOnCameraIdleListener(MapsActivity.this);
     }
 
     @Override
-    public boolean onMarkerClick(Marker marker) {
-        return false;
+    protected void onResume() {
+        super.onResume();
+        if ( map != null ) {
+            showMembers();
+        }
     }
 
     private Marker makeMemberMarker(Member member) {
@@ -192,6 +163,10 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         Channel channel = nucleusService.getCurrentChannel();
         Map<String, Member> memberMap = channel.getMembers();
         for ( Member member : memberMap.values() ) {
+            // We do not want to show ourselves or the system member
+            if ( member.isSystem() || member.isUser() ) {
+                continue;
+            }
             Marker marker = makeMemberMarker(member);
             if ( marker != null ) {
                 marker.setTag(member);
@@ -330,5 +305,10 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         }
         marker = makeMemberMarker(member);
         memberMarkers.put(member.getDeviceID(), marker);
+    }
+
+    @Override
+    public boolean onMarkerClick(Marker marker) {
+        return false;
     }
 }

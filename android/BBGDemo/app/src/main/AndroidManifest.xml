@@ -56,7 +56,12 @@
         <activity android:name=".ChannelActivity">
         </activity>
         <activity android:name=".MemberActivity"/>
-        <activity android:name=".MapActivity">
+        <activity
+            android:name=".MapsActivity"
+            android:label="@string/title_activity_maps">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="com.spacetimeinsight.bbgdemo.MainActivity"/>
         </activity>
     </application>
 

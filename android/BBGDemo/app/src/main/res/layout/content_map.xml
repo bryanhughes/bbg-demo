@@ -7,8 +7,8 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         app:layout_behavior="@string/appbar_scrolling_view_behavior"
-        tools:showIn="@layout/activity_map"
-        tools:context="com.spacetimeinsight.simpledemo.map.MapActivity">
+        tools:showIn="@layout/activity_maps"
+        tools:context="com.spacetimeinsight.bbgdemo.MapsActivity">
 
     <com.google.android.gms.maps.MapView
             android:layout_width="wrap_content"

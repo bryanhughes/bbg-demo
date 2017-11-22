@@ -63,7 +63,7 @@ public class MainActivity extends Activity {
                     startActivity(intent);
                     return true;
                 case R.id.navigation_map:
-                    intent = new Intent(getApplicationContext(), MapActivity.class);
+                    intent = new Intent(getApplicationContext(), MapsActivity.class);
                     startActivity(intent);
                     return true;
                 case R.id.navigation_chat:
