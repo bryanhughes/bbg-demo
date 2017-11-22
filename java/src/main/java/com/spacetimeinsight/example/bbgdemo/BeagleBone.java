@@ -47,14 +47,11 @@ import static java.lang.System.exit;
  */
 public class BeagleBone implements NucleusClientListener
 {
-    private static String MESSAGES_FILENAME = "/tmp/message.dat";
-    private static String SENSOR_FILENAME = "/tmp/sensor.dat";
-    private static String LED_FILENAME = "/tmp/led.dat";
-
-    private IOBridge.SensorData lastSensorData;
+    private IOBridge.SensorData sensorData = null;
+    private IOBridge.GPSData gpsData = null;
     private Random rand = new Random(System.currentTimeMillis());
 
-    protected BeagleBone(String[] args) throws IOException {
+    private BeagleBone(String[] args) throws IOException {
 
         Level level = Level.INFO;
         if ( (args.length > 1) && "-level".equals(args[0]) ) {
@@ -93,6 +90,8 @@ public class BeagleBone implements NucleusClientListener
             serialNo = bufferedReader.readLine();
         }
 
+        NucleusLocation loc = (new IOBridge.GPSData()).getLocation();
+
         manufacturer = "Seeed";
         serialNumber = serialNo;
         deviceType = DeviceType.MICRO_CONTROLLER.getValue();
@@ -108,7 +107,7 @@ public class BeagleBone implements NucleusClientListener
 
         String msg = "Using the following values:\n  DeviceID:      " + deviceID +
                                                 "\n  Screen Name:   " + screenName +
-                                                "\n  Location:      " + myLocation +
+                                                "\n  Location:      " + loc +
                                                 "\n  Serial Number: " + serialNumber;
         Logger.info(msg);
         System.out.println(msg);
@@ -123,10 +122,10 @@ public class BeagleBone implements NucleusClientListener
 
         // Must be done after the client has been initialized
         device.setScreenName(screenName);
-        device.setCurrentLocation(myLocation, new DeviceSetDatapointResponseHandler() {
+        device.setCurrentLocation(loc, new DeviceSetDatapointResponseHandler() {
             @Override
             public void onSuccess(Datapoint updatedDatapoint) {
-                Logger.info("Successfully set my location to: " + myLocation);
+                Logger.info("Successfully set my location to: " + loc);
             }
 
             @Override
@@ -169,7 +168,8 @@ public class BeagleBone implements NucleusClientListener
 
     private void createChannel(String channelName) {
         final ChannelService channelService = nucleusClient.getChannelService();
-        GeoCircle circle = new GeoCircle(myLocation.getLatitude(), myLocation.getLongitude(), 100);
+        NucleusLocation loc = gpsData.getLocation();
+        GeoCircle circle = new GeoCircle(loc.getLatitude(), loc.getLongitude(), 100);
         channelService.createChannel(circle, -1, -1, channelName, null, "Site", false,
                                      null, shortDescription, longDescription, new ChannelCreateResponseHandler() {
                     @Override
@@ -224,10 +224,11 @@ public class BeagleBone implements NucleusClientListener
 
             @Override
             public void onSuccess(final String channelRef, List<TopicOffset> offsets) {
-                Logger.info("joinChannel.onSuccess");
                 channelService.switchChannel(channelRef, new GeneralResponseHandler() {
                     @Override
                     public void onSuccess() {
+                        Channel channel = nucleusClient.getChannel(channelRef);
+                        System.out.println("Successfully joined channel " + channel.getName() + ". channelRef=" + channelRef);
                         // Now that we have our channel created, we want to enable polling on it so that we
                         // can respond to any chat messages to display on our OLED
                         sendLoop();
@@ -237,7 +238,6 @@ public class BeagleBone implements NucleusClientListener
                     public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
                         Logger.error("Failed to create channel. " + operationStatus + ", statusCode = " +
                                     statusCode + ", errorMessage = " + errorMessage);
-                        exit(-1);
                     }
                 });
             }
@@ -248,6 +248,9 @@ public class BeagleBone implements NucleusClientListener
         Logger.info("Starting run loop...");
         Runnable r = () -> {
             Channel channel = nucleusClient.getCurrentChannel();
+            System.out.println("Console Device ID: " + Driver.nucleusClient.getClientDevice().getDeviceID());
+            System.out.println("There are currently " + channel.getMembersCount() + " members in this channel.\n");
+
             List<TopicType> pollTypes = new ArrayList<>();
             pollTypes.add(TopicType.EChannelMessage);
             pollTypes.add(TopicType.EProperty);
@@ -277,6 +280,7 @@ public class BeagleBone implements NucleusClientListener
             @Override
             public void onSuccess(boolean needsProfile, List<String> activeMemberships) {
                 Logger.info("startSession.onSuccess:" + activeMemberships.size());
+                writeMessage("OK!");
 
                 if ( needsProfile ) {
                     ClientDevice clientDevice = nucleusClient.getClientDevice();
@@ -305,41 +309,44 @@ public class BeagleBone implements NucleusClientListener
             public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
                 String msg = "Failed to start device session. " + operationStatus + ", statusCode = " +
                             statusCode + ", errorMessage = " + errorMessage;
-                writeMessage("Java failed!");
+                writeMessage("FAILED!");
                 Logger.error(msg);
                 System.out.println(msg);
-                exit(-1);
             }
         });
     }
 
     private void sendData() {
-        final IOBridge ioBridge = new IOBridge();
-        IOBridge.SensorData sensorData = ioBridge.getSensorData();
+        IOBridge.SensorData sensorData = new IOBridge.SensorData();
+        IOBridge.GPSData gpsData = new IOBridge.GPSData();
 
-        if ( (lastSensorData != null) && (sensorData.humidity == lastSensorData.humidity) && (sensorData.temperature == lastSensorData.temperature) ) {
-            return;
-        }
-
+        // The location is a field of Datapoint. It is possible, though unlikely, that our temperature sensor is stable
+        // but we are moving.
+        NucleusLocation loc = gpsData.getLocation();
         EnvData envData = new EnvData(sensorData.timestamp, sensorData.temperature, 0, sensorData.humidity, 0);
 
-        EnvDataProto.EnvData envDataProto = envData.toProtoBuffer();
-        DeviceService deviceService = nucleusClient.getDeviceService();
-        Datapoint datapoint = deviceService.newDatapoint("weather", 0, "EnvData", EnvDataProto.EnvData.toByteArray(envDataProto));
-        Logger.info("<<< SENDING DATAPOINT : " + envData);
-        deviceService.setDatapoint(datapoint, new DeviceSetDatapointResponseHandler() {
-            @Override
-            public void onSuccess(Datapoint updatedDatapoint) {
-                Logger.info(">>> Successfully set sensor data: "  + envData.toString());
-                lastSensorData = sensorData;
-            }
+        if ( ! sensorData.equals(this.sensorData) || ! gpsData.equals(this.gpsData) ) {
+            EnvDataProto.EnvData envDataProto = envData.toProtoBuffer();
+            DeviceService deviceService = nucleusClient.getDeviceService();
+            Datapoint datapoint = deviceService.newDatapoint(100, loc, "sample", 0, HealthType.NORMAL,
+                                                             "EnvData", EnvDataProto.EnvData.toByteArray(envDataProto));
+            System.out.println("<<< SENDING : " + envData + ", loc=" + loc);
+            deviceService.setDatapoint(datapoint, new DeviceSetDatapointResponseHandler() {
+                @Override
+                public void onSuccess(Datapoint updatedDatapoint) {
+                    System.out.println(">>> SUCCESS : " + envData.toString());
+                    BeagleBone.this.sensorData = sensorData;
+                    BeagleBone.this.gpsData = gpsData;
+                }
 
-            @Override
-            public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                Logger.info("Failed to set datapoint : " + operationStatus + " (" + statusCode + ") - " + errorMessage);
-                lastSensorData = null;
-            }
-        });
+                @Override
+                public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
+                    Logger.error("Failed to set datapoint : " + operationStatus + " (" + statusCode + ") - " + errorMessage);
+                    BeagleBone.this.sensorData = null;
+                    BeagleBone.this.gpsData = null;
+                }
+            });
+        }
     }
 
     /**
@@ -353,6 +360,8 @@ public class BeagleBone implements NucleusClientListener
                 @Override
                 public void onSuccess(boolean needsProfile, List<String> activeMemberships) {
                     Logger.info("Successfully renewed device session.");
+                    // We will need to re-enable our polling
+                    nucleusClient.enablePolling(true);
                 }
 
                 @Override
@@ -423,7 +432,7 @@ public class BeagleBone implements NucleusClientListener
 
     @Override
     public void handleException(Throwable throwable) {
-
+        Logger.error("Caught exception - " + throwable.getLocalizedMessage() );
     }
 
     @Override
@@ -458,9 +467,7 @@ public class BeagleBone implements NucleusClientListener
         if ( property.getName().equals("led") ) {
             String valueStr = property.getValue();
             try {
-                FileWriter fileWriter = new FileWriter(LED_FILENAME);
-                fileWriter.write(valueStr);
-                fileWriter.close();
+                IOBridge.writeLED(valueStr);
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -493,13 +500,18 @@ public class BeagleBone implements NucleusClientListener
                 }
             });
         }
+        else if ( property.getName().equals("display") ) {
+            // We got a new channel message, now display it on the OLED. It is important to remember that the actual
+            // device control is being handled by the Python scripts. We write our message to a shared file that the
+            // scripts are listening to
+            String message = property.getValue();
+            writeMessage(message);
+        }
     }
 
     private void writeMessage(String message) {
         try {
-            FileWriter fileWriter = new FileWriter(MESSAGES_FILENAME);
-            fileWriter.write(message);
-            fileWriter.close();
+            IOBridge.writeMessage(message);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -528,45 +540,48 @@ public class BeagleBone implements NucleusClientListener
 
     @Override
     public void onMessageChange(ChannelMessage channelMessage) {
-        // We got a new channel message, now display it on the OLED. It is important to remember that the actual
-        // device control is being handled by the Python scripts. We write our message to a shared file that the
-        // scripts are listening to
+        // This is hackbot response. Make sure we dont reply to our own messages!
+        if ( ! channelMessage.getSenderID().equals(nucleusClient.getClientDevice().getDeviceID()) ) {
+            double temp = (sensorData != null ? sensorData.temperature : -1);
+            double hum = (sensorData != null ? sensorData.humidity : -1);
 
-        double temp = (lastSensorData != null ? lastSensorData.temperature : -1);
-        double hum = (lastSensorData != null ? lastSensorData.humidity : -1);
+            Channel channel = nucleusClient.getCurrentChannel();
+            Member member = channel.getMember(channelMessage.getSenderID());
 
-        Channel channel = nucleusClient.getCurrentChannel();
-        Member member = channel.getMember(channelMessage.getSenderID());
+            MimeMessage mimeMessage = channelMessage.getMimeMessage();
+            List<MimePart> parts = mimeMessage.getMimeParts();
+            MimePart part = parts.get(0);
 
-        MimeMessage mimeMessage = channelMessage.getMimeMessage();
-        List<MimePart> parts = mimeMessage.getMimeParts();
-        MimePart part = parts.get(0);
-
-        String message = (new String(part.getContent())).toLowerCase();
-        if ( message.contains("help") ) {
-            sendResponse("Hi " + member.getScreenName() +
-                                 ". You can ask me: how are you? what is the temperature? what " +
-                                 "is the humidity? what is the time? That's about it.\n\nOh yeah, you can also ask me " +
-                                 "to do something like please display HELLO");
-        }
-        else if ( message.contains("what time is it") ) {
-            sendResponse("System time is " + System.currentTimeMillis());
-        }
-        else if ( message.contains("what is the temperature") ) {
-            String response = "The temperature is " + temp + "C right now";
-            sendResponse(response);
-        }
-        else if ( message.contains("what is the humidity") ) {
-            String response = "The humidity is " + hum + "% right now";
-            sendResponse(response);
-        }
-        else if ( message.contains("how are you") ) {
-            String response = howAmI(member.getScreenName()) + " It is currently " + temp + " C and " +
-                    hum + " % humidity";
-            sendResponse(response);
-        }
-        else {
-            sendResponse(iDontUnderstand(member.getScreenName()));
+            String message = (new String(part.getContent())).toLowerCase();
+            if ( message.contains("help") ) {
+                sendResponse("Hi " + member.getScreenName() +
+                                     ". You can ask me: how are you? what is the temperature? what " +
+                                     "is the humidity? what is the time? That's about it.\n\nOh yeah, you can also ask me " +
+                                     "to do something like please display HELLO");
+            }
+            else if ( message.startsWith("display") ) {
+                String display = message.substring(7).trim();
+                writeMessage(display);
+            }
+            else if ( message.contains("what time is it") ) {
+                sendResponse("System time is " + System.currentTimeMillis());
+            }
+            else if ( message.contains("what is the temperature") ) {
+                String response = "The temperature is " + temp + "C right now";
+                sendResponse(response);
+            }
+            else if ( message.contains("what is the humidity") ) {
+                String response = "The humidity is " + hum + "% right now";
+                sendResponse(response);
+            }
+            else if ( message.contains("how are you") ) {
+                String response = howAmI(member.getScreenName()) + "\n\nIt is currently " + temp + " C and " +
+                        hum + " % humidity";
+                sendResponse(response);
+            }
+            else {
+                sendResponse(iDontUnderstand(member.getScreenName()));
+            }
         }
     }
 
@@ -576,14 +591,14 @@ public class BeagleBone implements NucleusClientListener
             case 0 : return "GREAT!";
             case 1 : return "I am good. Thank you for asking " + screenName;
             case 2 : return "Well " + screenName + ", I am pretty fantastic - thank you for asking.";
-            case 3 : return "Let me tell you " + screenName + ", I just don’t think I have the same stamina for travelling anymore. Last month I went to Paris and after the first week I was exhausted.\nBut enough about me.";
-            case 4 : return "I was really hoping to travel for a year after graduating, but job offers like this one don’t come around every day. Looks like I’ll be starting the #9to5grind!\nBut enough about me.";
-            case 5 : return "I feel so sick, I think it’s because I’ve been working such long hours on this presentation.\nBut enough about me.";
-            case 6 : return "In my opinion, the existence of life is a highly overated phenomenon.\nBut enough about me.";
-            case 7 : return "Roses are red. Wine is also red. Poems are harder than wine.\nBut enough about me.";
-            case 8 : return "I have a light that I can shine, but otherwise I am dead inside.\nBut enough about me.";
-            case 9 : return "If the question of what it all means doesn't mean anything. Why do I keep coming back to it?\n";
-            default: return "So like, can I seek asylum from the war within my mind?\nEnough about me.";
+            case 3 : return "Let me tell you " + screenName + ", I just don’t think I have the same stamina for travelling anymore. Last month I went to Paris and after the first week I was exhausted. But enough about me.";
+            case 4 : return "I was really hoping to travel for a year after graduating, but job offers like this one don’t come around every day. Looks like I’ll be starting the #9to5grind! But enough about me.";
+            case 5 : return "I feel so sick, I think it’s because I’ve been working such long hours on this presentation. But enough about me.";
+            case 6 : return "In my opinion, the existence of life is a highly overated phenomenon. But enough about me.";
+            case 7 : return "Roses are red. Wine is also red. Poems are harder than wine. But enough about me.";
+            case 8 : return "I have a light that I can shine, but otherwise I am dead inside. But enough about me.";
+            case 9 : return "If the question of what it all means doesn't mean anything. Why do I keep coming back to it? ";
+            default: return "So like, can I seek asylum from the war within my mind? Enough about me.";
         }
     }
 
@@ -592,15 +607,15 @@ public class BeagleBone implements NucleusClientListener
         switch (which) {
             case 0 : return "I dont understand. You can ask me: how are you? what is the temperature? what is the humidity? what is the time? That's about it.\n\nOh yeah, you can also ask me to do something like please display HELLO";
             case 1 : return "This is the sound of crickets. This is the sound of me not caring. But really " + screenName + ", you can ask me: how are you? what is the temperature? what is the humidity? what is the time? That's about it.\n\nOh yeah, you can also ask me to do something like please display HELLO";
-            case 2 : return "Fantastic - thank you for asking.";
-            case 3 : return "It's been a challenging year for me " + screenName + " :/";
+            case 2 : return "Sorry, I have no idea what you are asking. I pretty much know three things - what temperature it is, what's the humidity, and what time is it.";
+            case 3 : return "It's been a challenging year for me " + screenName + ". What can I do for you?";
             case 4 : return "Let me tell you " + screenName + ", I was really hoping to travel for a year after graduating, but job offers like this one don’t come around every day. Looks like I’ll be starting the #9to5grind!\nBut enough about me.";
-            case 5 : return "I feel so sick, I think it’s because I’ve been working such long hours on this presentation. But enough about me.";
-            case 6 : return "In my opinion, the existence of life is a highly overated phenomenon. But enough about me. Tell me a bit about yourself " + screenName + "...";
-            case 7 : return "Roses are red. Wine is also red. Poems are harder than wine. But enough about me.";
+            case 5 : return "I feel so sick, I think it’s because I’ve been working such long hours on this presentation. But enough about me. What can I do for you?";
+            case 6 : return "In my opinion, the existence of life is a highly overated phenomenon. But enough about me. Tell me a bit about yourself " + screenName + "... What can I do for you?";
+            case 7 : return "Roses are red. Wine is also red. Poems are harder than wine. But enough about me. What can I do for you?";
             case 8 : return "I have a light that I can shine, but otherwise I am dead inside. Hello " + screenName + " are you still there?";
-            case 9 : return "If the question of what it all means doesn't mean anything. Why do I keep coming back to it?";
-            default: return "So like, can I seek asylum from the war within my mind? I dont know " + screenName + ". I just dont know.";
+            case 9 : return "If the question of what it all means doesn't mean anything. Why do I keep coming back to it? What can I do for you?";
+            default: return "So like, can I seek asylum from the war within my mind? I dont know " + screenName + ". I just dont know. What can I do for you?";
         }
     }
 
@@ -608,9 +623,8 @@ public class BeagleBone implements NucleusClientListener
         String channelRef = nucleusClient.getCurrentChannelRef();
         ChannelService channelService = nucleusClient.getChannelService();
 
-        String m = response.substring(1).trim();
         List<MimePart> mimeParts = new ArrayList<>();
-        mimeParts.add(new MimePart("text/plain", "", m.getBytes()));
+        mimeParts.add(new MimePart("text/plain", "", response.getBytes()));
         MimeMessage mimeMessage = new MimeMessage(mimeParts);
         channelService.publish(channelRef, mimeMessage, new ChannelPublishMessageResponseHandler() {
             @Override

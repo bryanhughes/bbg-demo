@@ -1,5 +1,16 @@
 apply plugin: 'com.android.application'
 
+buildscript {
+    repositories {
+        jcenter()
+    }
+
+    dependencies {
+        classpath 'com.android.tools.build:gradle:3.0.1'
+        classpath 'com.google.gms:google-services:3.0.0'
+    }
+}
+
 android {
     compileSdkVersion 25
     buildToolsVersion '26.0.2'
@@ -31,14 +42,16 @@ repositories {
 }
 
 dependencies {
+    compile 'com.google.android.gms:play-services-base:11.6.0'
+    compile 'com.google.android.gms:play-services-maps:11.6.0'
     compile fileTree(include: ['*.jar'], dir: 'libs')
-    compile(name: 'nucleus-android-sdk', version: '2.0.7-debug', ext: 'aar')
-    compile 'com.google.android.gms:play-services-location:11.0.4'
+    compile(name: 'nucleus-android-sdk', version: '2.0.8-debug', ext: 'aar')
+    compile 'com.google.android.gms:play-services-location:11.6.0'
     androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
         exclude group: 'com.android.support', module: 'support-annotations'
     })
-    compile 'com.android.support:appcompat-v7:25.3.1'
-    compile 'com.android.support:design:25.3.1'
+    compile 'com.android.support:appcompat-v7:25.4.0'
+    compile 'com.android.support:design:25.4.0'
     testCompile 'junit:junit:4.12'
     compile 'com.android.support.constraint:constraint-layout:1.0.2'
 }

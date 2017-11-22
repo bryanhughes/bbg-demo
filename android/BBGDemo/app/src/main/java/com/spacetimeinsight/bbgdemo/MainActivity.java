@@ -1,15 +1,19 @@
 package com.spacetimeinsight.bbgdemo;
 
+import android.Manifest;
+import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.design.widget.BottomNavigationView;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.MenuItem;
@@ -21,26 +25,22 @@ import android.widget.TextView;
 
 import com.spacetimeinsight.nucleus.android.NucleusService;
 import com.spacetimeinsight.nucleuslib.Channel;
-import com.spacetimeinsight.nucleuslib.ChannelService;
 import com.spacetimeinsight.nucleuslib.NucleusException;
-import com.spacetimeinsight.nucleuslib.datamapped.MimeMessage;
-import com.spacetimeinsight.nucleuslib.datamapped.MimePart;
-import com.spacetimeinsight.nucleuslib.responsehandlers.ChannelPublishMessageResponseHandler;
 import com.spacetimeinsight.nucleuslib.responsehandlers.GeneralResponseHandler;
 import com.spacetimeinsight.nucleuslib.types.OperationStatus;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 
 import static android.support.v4.content.PermissionChecker.PERMISSION_GRANTED;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends Activity {
     private static final String LOG_TAG = MainActivity.class.getName();
-    private static final int PERMISSION_REQUEST_LOCATION = 0;
 
-    private static String[] PERMISSION_LOCATION = {android.Manifest.permission.ACCESS_FINE_LOCATION,
-            android.Manifest.permission.ACCESS_COARSE_LOCATION};
+    private static final String REQUIRED_PERMISSIONS[] = {
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+    };
 
     private SeekBar redBar;
     private SeekBar greenBar;
@@ -62,12 +62,12 @@ public class MainActivity extends AppCompatActivity {
                     intent = new Intent(getApplicationContext(), MainActivity.class);
                     startActivity(intent);
                     return true;
-                case R.id.navigation_chat:
-                    intent = new Intent(getApplicationContext(), ChatActivity.class);
+                case R.id.navigation_map:
+                    intent = new Intent(getApplicationContext(), MapActivity.class);
                     startActivity(intent);
                     return true;
-                case R.id.navigation_channel:
-                    intent = new Intent(getApplicationContext(), ChannelActivity.class);
+                case R.id.navigation_chat:
+                    intent = new Intent(getApplicationContext(), ChatActivity.class);
                     startActivity(intent);
                     return true;
                 case R.id.navigation_partition:
@@ -89,7 +89,7 @@ public class MainActivity extends AppCompatActivity {
     private BroadcastReceiver receiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if ( intent.getAction().equals(BBGDemoApplication.BROADCAST_PROPERTY_ACTION) ) {
+            if (Objects.equals(intent.getAction(), BBGDemoApplication.BROADCAST_PROPERTY_ACTION)) {
                 int rVal = intent.getIntExtra("red", 0);
                 int gVal = intent.getIntExtra("green", 0);
                 int bVal = intent.getIntExtra("blue", 0);
@@ -98,7 +98,7 @@ public class MainActivity extends AppCompatActivity {
                 greenBar.setProgress(gVal);
                 blueBar.setProgress(bVal);
             }
-            else if ( intent.getAction().equals(BBGDemoApplication.BROADCAST_SENSOR_ACTION) ) {
+            else if (Objects.equals(intent.getAction(), BBGDemoApplication.BROADCAST_SENSOR_ACTION)) {
                 double h = intent.getDoubleExtra("h", 0);
                 double t = intent.getDoubleExtra("t", 0);
                 long ts = intent.getLongExtra("ts", 0);
@@ -201,28 +201,22 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 NucleusService nucleusService = BBGDemoApplication.getNucleusService();
-                ChannelService channelService = nucleusService.getChannelService();
-
                 EditText messageText = (EditText) findViewById(R.id.messageText);
                 final String message = messageText.getText().toString();
 
-                List<MimePart> parts = new ArrayList<>();
-                parts.add(new MimePart("text/plain", "", message.getBytes()));
-                MimeMessage mimeMessage = new MimeMessage(parts);
-                channelService.publish(nucleusService.getCurrentChannelRef(),
-                                       mimeMessage,
-                                       new ChannelPublishMessageResponseHandler() {
-                                           @Override
-                                           public void onSuccess(long offset, long eventID) {
-                                               Log.i(LOG_TAG, "Successfully published message to channel - " + message);
-                                           }
+                Channel channel = nucleusService.getCurrentChannel();
+                channel.setProperty("display", message, new GeneralResponseHandler() {
+                    @Override
+                    public void onSuccess() {
+                        Log.i(LOG_TAG, "Successfully set channel property - " + message);
+                    }
 
-                                           @Override
-                                           public void onFailure(OperationStatus operationStatus, int statusCode, String errMsg) {
-                                               Log.e(LOG_TAG, "Failed to publish message to channel - " + message + ". " +
-                                                       operationStatus + " (" + statusCode + ") - " + errMsg);
-                                           }
-                                       });
+                    @Override
+                    public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg) {
+                        Log.e(LOG_TAG, "Failed to set channel property - " + message + ". " + operationStatus + " (" +
+                                statusCode + ") - " + errorMsg);
+                    }
+                });
             }
         });
 
@@ -250,6 +244,37 @@ public class MainActivity extends AppCompatActivity {
 
         BottomNavigationView navigation = (BottomNavigationView) findViewById(R.id.navigation);
         navigation.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
+
+
+        checkPermission();
+    }
+
+    private void checkPermission() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, REQUIRED_PERMISSIONS, 1);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String permissions[], @NonNull int[] grantResults) {
+        if(grantResults.length > 0) {
+            if (grantResults[0] != PERMISSION_GRANTED){
+                final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+
+                builder.setTitle("Error");
+                builder.setMessage("BBGDemo needs access to your phones GPS for location tracking. Without these " +
+                                           "permissions, this demo may not function propertly.");
+                builder.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                        checkPermission();
+                    }
+                });
+
+                builder.create().show();
+            }
+        }
     }
 
     @Override
@@ -286,18 +311,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onPause() {
         unregisterReceiver(receiver);
         super.onPause();
-    }
-
-    private void checkPermissions(NucleusService nucleusService) {
-        if ( (ContextCompat.checkSelfPermission(getApplicationContext(),
-                android.Manifest.permission.ACCESS_FINE_LOCATION) != PERMISSION_GRANTED) &&
-                (ContextCompat.checkSelfPermission(getApplicationContext(),
-                        android.Manifest.permission.ACCESS_COARSE_LOCATION) != PERMISSION_GRANTED) ) {
-            ActivityCompat.requestPermissions(this, PERMISSION_LOCATION, PERMISSION_REQUEST_LOCATION);
-        }
-        else {
-            nucleusService.enableLocationServices(true);
-        }
     }
 
     public String getLEDString() {

@@ -33,5 +33,7 @@
     <string name="channel">Channel</string>
     <string name="chat_bot">Chat Bot</string>
     <string name="say_something">Ask me something</string>
+    <string name="map">Map</string>
+    <string name="title_activity_maps">Map</string>
 
 </resources>

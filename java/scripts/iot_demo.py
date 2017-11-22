@@ -1,13 +1,17 @@
 import time
 import os
+import traceback
+
 import grove_dht
 import grove_oled
 import grove_led
+import grove_gps
 
 THRESHOLD_TEMPERATURE = 22.0
 MESSAGE_FILENAME = "/tmp/message.dat"
 LED_FILENAME = "/tmp/led.dat"
 SENSOR_FILENAME = "/tmp/sensor.dat"
+GPS_FILENAME = "/tmp/gps.dat"
 
 if __name__=="__main__":
     rgb_led = grove_led.ChainableLED(grove_led.CLK_PIN, grove_led.DATA_PIN, grove_led.NUMBER_OF_LEDS)
@@ -34,9 +38,43 @@ if __name__=="__main__":
     humidity0 = 0
     temperature0 = 0
 
+    lat0 = 0.0
+    lng0 = 0.0
+    sats0 = 0
     c = '+'
 
+    g = grove_gps.GPS()
+
     while True:
+        # First, attempt to read from our GPS
+        try:
+            x = g.read()  # Read from GPS
+            [t, fix, sats1, alt, lat1, lat_ns, lng1, lng_ew] = g.vals()  # Get the individual values
+            if lat_ns == "N":
+                latstr = str(float(lat1) / 100)
+            else:
+                latstr = str(-float(lat1) / 100)
+
+            if lng_ew == "W":
+                lngstr = str(-float(lng1) / 100)
+            else:
+                lngstr = str(float(lng1) / 100)
+
+            if ( lat0 != lat1) and (lng0 != lng1) and (sats0 != sats1):
+                gps_str = t + "," + latstr + "," + lngstr + "," + fix + "," + sats1 + "," + alt
+                gps_file = open(GPS_FILENAME, "w")
+                gps_file.write(gps_str)
+                gps_file.close()
+                print('GPS = ' + gps_str)
+
+                lat0 = lat1
+                lng0 = lng1
+                sats0 = sats1
+        except IndexError:
+            print "Unable to read GPS"
+        except Exception as e:
+            print "Failed to read GPS - " + e.message
+
         humidity1, temperature1 = grove_dht.read()
 
         if (humidity0 != humidity1) or (temperature0 != temperature1):
@@ -93,9 +131,7 @@ if __name__=="__main__":
         grove_oled.oled_setTextXY(5, 0)
         grove_oled.oled_putString("SpaceTime")
 
-
-
-# The same for what to do with our LED
+        # The same for what to do with our LED
         try:
             led_file = open(LED_FILENAME, "r")
             led_values = led_file.readline()

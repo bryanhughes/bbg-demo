@@ -155,9 +155,7 @@ public class Console implements NucleusClientListener {
 
             @Override
             public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                LOGGER.severe("Failed to start device session. " + operationStatus + ", statusCode = " +
-                                    statusCode + ", errorMessage = " + errorMessage);
-                System.exit(-1);
+                System.out.println("Session failed (" + statusCode + "). Retrying...");
             }
         });
     }
@@ -262,7 +260,6 @@ public class Console implements NucleusClientListener {
 
     private void scan(String channelRef) {
         ChannelService channelService = Driver.nucleusClient.getChannelService();
-
         String message = scanner.next();
         char c = message.charAt(0);
         if ( c == 'q' ) {
@@ -352,7 +349,8 @@ public class Console implements NucleusClientListener {
 
             @Override
             public void onSuccess(final String channelRef, List<TopicOffset> offsets) {
-                System.out.println("Successfully joined channel. channelRef=" + channelRef);
+                Channel channel = nucleusClient.getChannel(channelRef);
+                System.out.println("Successfully joined channel " + channel.getName() + ". channelRef=" + channelRef);
                 channelService.switchChannel(channelRef, new GeneralResponseHandler() {
                     @Override
                     public void onSuccess() {
@@ -363,7 +361,6 @@ public class Console implements NucleusClientListener {
                     public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
                         LOGGER.severe("Failed to create channel. " + operationStatus + ", statusCode = " +
                                             statusCode + ", errorMessage = " + errorMessage);
-                        System.exit(-1);
                     }
                 });
             }

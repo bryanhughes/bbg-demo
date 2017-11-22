@@ -4,16 +4,10 @@
     <facet type="Python" name="Python">
       <configuration sdkName="Python 2.7.10 (/usr/bin/python)" />
     </facet>
-    <facet type="android" name="Android">
-      <configuration />
-    </facet>
   </component>
   <component name="NewModuleRootManager" inherit-compiler-output="true">
     <exclude-output />
     <content url="file://$MODULE_DIR$">
-      <sourceFolder url="file://$MODULE_DIR$/android/BBGDemo/app/src/main/java" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/android/BBGDemo/app/src/test/java" isTestSource="true" />
-      <sourceFolder url="file://$MODULE_DIR$/gen" isTestSource="false" generated="true" />
       <excludeFolder url="file://$MODULE_DIR$/.gradle" />
       <excludeFolder url="file://$MODULE_DIR$/.idea" />
       <excludeFolder url="file://$MODULE_DIR$/build" />
@@ -22,6 +16,5 @@
     </content>
     <orderEntry type="jdk" jdkName="Android API 25 Platform" jdkType="Android SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="library" name="Python 2.7.10 (/usr/bin/python) interpreter library" level="application" />
   </component>
 </module>

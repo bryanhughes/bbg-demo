@@ -6,9 +6,21 @@ to work with because it comes pre-loaded with Debian!
 
 NOTE: This README assumes you are familiar with the Beaglebone Green Wireless.
 
-This project demonstrates how easy it is to build a Beaglebone Green IoT device and connect to the SpaceTime IoT Warp platform. 
-This code has been tested with a Beaglebone Green Wireless, with a Grove Chainable RBG LED, Grove Temperature & Humidity Sensor Pro,
+This project demonstrates how easy it is to build a Beaglebone Green IoT device and connect to the SpaceTime IoT Warp platform 
+using the Nucleus SDKs.  This code has been tested with a Beaglebone Green Wireless, with a Grove Chainable RBG LED, Grove Temperature & Humidity Sensor Pro,
 and the Grove OLED 64x64 Display.
+
+This project provides the following features:
+
+- Stream real-time temperature and humidity from the IoT Device
+- Control the LED light on the IoT Device
+- Display a message on the OLED screen of the IoT Device
+- Ask the IoT Device chat bot running on the device questions
+
+The project includes the following components:
+- A Beaglebone Green Wireless IoT Devices with temperature, humidity, and GPS sensor inputs
+- A Java console app to control the IoT Device
+- An Android app to view the sensor data, control the device, and chat with the chat bot
 
 If you are starting from scratch, please follow the instructions for [Getting Started](http://beagleboard.org/getting-started). Once you have your Beaglebone connected and accessible, go ahead and SSH onto the device.
 
@@ -53,6 +65,7 @@ The parts to build this project include:
 2) [Grove Base Cape for Beaglebone v2.0](https://www.seeedstudio.com/Grove-Base-Cape-for-Beaglebone-v2.0-p-2644.html)
 3) [Temperature & Humidity Sensor Pro](https://www.seeedstudio.com/Grove-Temperature%26Humidity-Sensor-Pro%EF%BC%88AM2302%EF%BC%89-p-838.html)
 5) [Seeedstudio Grove Starter Kit for Beaglebone Green](https://www.amazon.com/gp/product/B018FNOJUK/ref=oh_aui_detailpage_o07_s00?ie=UTF8&psc=1)
+6) [Seeedstudio Grove GPS](http://www.seeedstudio.com/depot/Grove-GPS-p-959.html)
 
 ![image_2](docs/images/image_2.jpg) 
 The Starter Kit
@@ -79,8 +92,14 @@ Next, connect the Temperature & Humidity Sensor Pro to the UART Grove Connector 
 Attaching the Grove cape is super easy - just line up the curved side of the cape with the curved side of the 
 Beaglebone Green cape, make sure the P8 and P9 headers are aligned with the cape's pins and gently press down. 
 
-Finally, find the GPIO grove connector marked 50 and attach the LED Chainable Sensor
+Next, find the GPIO grove connector marked 50 and attach the LED Chainable Sensor
 ![led_connection](docs/images/led_connection.jpg)
+
+Finally, connect the GPS to UART 4 on the Grove cape. You may need to enable UART4. If you have any issues, please
+reference the following two resources:
+
+http://www.erdahl.io/2016/08/talking-serial-over-beaglebone-green.html
+http://beaglebone.cameon.net/home/serial-ports-uart
 
 # WARNING
 ```
@@ -169,7 +188,31 @@ secure copy this file to your Beaglebone Green. It is recommended that you make 
 under the home directory.
 
     $ scp release/bbg-demo-1.0.zip debian@<ip-addresss>:bbgdemo
+    
+For example, on the Beaglebone, there is a working directory called `bbgdemo` in the debian home directory:
 
+```
+    $ gradle clean build release
+        
+    > Task :java:prepareRelease
+    Creating release - java
+    
+    
+    BUILD SUCCESSFUL in 1s
+    8 actionable tasks: 8 executed
+    $ scp release/bbg-demo-1.0.zip debian@192.168.43.224:bbg
+    Debian GNU/Linux 8
+    
+    BeagleBoard.org Debian Image 2016-11-06
+    
+    Support/FAQ: http://elinux.org/Beagleboard:BeagleBoneBlack_Debian
+    
+    default username:password is [debian:temppwd]
+    
+    debian@192.168.43.224's password:
+    bbg-demo-1.0.zip                                                                                                                                                          100% 1683KB 152.9KB/s   00:11
+    bryan@Yetitronic:~/git/bbg-demo/java$    
+```
 Back on the device, unzip the file. You will see the executable JAR and supporting libraries.
 
 Next, edit the local.properties file and set the api_accountid, api_accounttoken, api_key, and api_token to the values 

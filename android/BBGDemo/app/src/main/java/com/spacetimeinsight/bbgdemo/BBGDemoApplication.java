@@ -55,6 +55,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
 
@@ -70,20 +71,27 @@ public class BBGDemoApplication extends Application implements NucleusClientList
     private static NucleusService nucleusService = null;
     private static ProgressDialog progress;
     private static Bitmap systemImage;
-    private static Bitmap missingImage;
 
     private Activity currentActivity;
     private Bitmap profileImage;
-    private Set<Integer> seenErrors = new HashSet<>();
     private int redLED = 0;
     private int greenLED = 0;
     private int blueLED = 0;
+
+    /*
+     * The SDK does not filter errors and in most cases will work to retry the command. This means it is possible for
+     * the client to get the same error in succession. To keep it from flooding the UI with alerts, we only want to
+     * display the error the first time we see it. When command eventually succeeds, the SDK will call onErrorReset().
+     * This is where we clear our seen error set.
+     */
+    private Set<Integer> seenErrorSet = new HashSet<>();
 
     private GeoCircle myLocation = new GeoCircle(37.751685, -122.447621, 100);
     private String channelName = "bbgdemo01";
     private String shortDescription = "BBG Demo";
     private String longDescription = "2020 Third Street, San Francisco, CA";
     private ChatArrayAdapter chatArrayAdapter;
+    private boolean isDisplaying502Alert = false;
 
     @Override
     public void onCreate() {
@@ -175,13 +183,6 @@ public class BBGDemoApplication extends Application implements NucleusClientList
         return systemImage;
     }
 
-    public static Bitmap getMissingImage(Context context) {
-        if ( missingImage == null ) {
-            missingImage = BitmapFactory.decodeResource(context.getResources(), R.mipmap.profile_missing);
-        }
-        return missingImage;
-    }
-
     static public void showToast(final Context context, final String message) {
         Toast.makeText(context, message, Toast.LENGTH_LONG).show();
     }
@@ -266,11 +267,9 @@ public class BBGDemoApplication extends Application implements NucleusClientList
                         .create();
                 alertDialog.show();
             }
-            else {
-                nucleusService.handleOnError(0, errorMessage);
 
-                // Handle if the device is black listed...
-            }
+            // The error is also handled in the onRequestError() callback. That is where we implement general messaging
+            // and handling. For all other errors, lets handle them there
         }
     };
 
@@ -492,6 +491,24 @@ public class BBGDemoApplication extends Application implements NucleusClientList
                 i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 startActivity(i);
             }
+            else if ( operationStatus.equals(OperationStatus.SERVER_EXCEPTION) && (statusCode == 502) ) {
+                // We do not want to display this again if it is already displayed and the user just has not responded
+                // to it...
+                if ( ! isDisplaying502Alert ) {
+                    AlertDialog alertDialog;
+                    alertDialog = new AlertDialog.Builder(currentActivity).setMessage("Doh! Encountered a server exception (502). Will keep retrying...")
+                                                                          .setTitle("Error")
+                                                                          .setPositiveButton("OK",
+                                                                                             new DialogInterface.OnClickListener() {
+                                                                                                 @Override
+                                                                                                 public void onClick( DialogInterface dialog, int which) {
+                                                                                                     isDisplaying502Alert = false;
+                                                                                                 }
+                                                                                             })
+                                                                          .create();
+                    alertDialog.show();
+                }
+            }
             else {
                 Log.e(LOG_TAG, "(" + statusCode + ") " + errorMessage);
                 nucleusService.handleOnError(0, errorMessage);
@@ -528,8 +545,8 @@ public class BBGDemoApplication extends Application implements NucleusClientList
         // Lets use a set to keep track of errors we have already seen and only show the message on the first instance
         // of the message.
 
-        if ( ! seenErrors.contains(errorCode) ) {
-            seenErrors.add(errorCode);
+        if ( ! seenErrorSet.contains(errorCode) ) {
+            seenErrorSet.add(errorCode);
             if ( progress != null ) {
                 progress.dismiss();
                 progress = null;
@@ -547,7 +564,7 @@ public class BBGDemoApplication extends Application implements NucleusClientList
     @Override
     public void onErrorReset() {
         // Remove all our seen errors
-        seenErrors.clear();
+        seenErrorSet.clear();
     }
 
 

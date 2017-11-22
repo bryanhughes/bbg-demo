@@ -38,6 +38,7 @@ import android.support.v4.content.FileProvider;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.View;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.util.Log;
@@ -48,9 +49,6 @@ import com.spacetimeinsight.nucleuslib.DeviceService;
 import com.spacetimeinsight.nucleuslib.core.ClientDevice;
 import com.spacetimeinsight.nucleuslib.responsehandlers.GeneralResponseHandler;
 import com.spacetimeinsight.nucleuslib.types.OperationStatus;
-import com.spacetimeinsight.bbgdemo.R;
-import com.spacetimeinsight.bbgdemo.SharedPreferencesHelper;
-import com.spacetimeinsight.bbgdemo.BBGDemoApplication;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -69,8 +67,10 @@ public class ProfileActivity extends Activity {
     private EditText screenName;
     private ImageView profileView;
     private Bitmap bitmap;
+    private Button takePhotoButton;
     private boolean hasEdit = false;
     private boolean fromSession = false;
+    private Uri file;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -115,6 +115,12 @@ public class ProfileActivity extends Activity {
                                                                                         getPackageName()),
                                                            context.getTheme());
             profileView.setImageDrawable(drawable);
+        }
+
+        takePhotoButton = (Button) findViewById(R.id.takePhotoButton);
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            takePhotoButton.setEnabled(false);
+            ActivityCompat.requestPermissions(this, new String[] { Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE }, 0);
         }
     }
 
@@ -162,45 +168,9 @@ public class ProfileActivity extends Activity {
     }
 
     public void takePhoto(View view) {
-        if ( ContextCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.CAMERA) == PackageManager.PERMISSION_DENIED) {
-            // Should we show an explanation?
-            if (ActivityCompat.shouldShowRequestPermissionRationale(ProfileActivity.this, Manifest.permission.CAMERA) ) {
-                BBGDemoApplication app = (BBGDemoApplication) getApplication();
-                app.showAlert("Need Permission", "You need to grant permission to Simple Demo to access the camera.");
-            }
-            else {
-                // No explanation needed, we can request the permission.
-                ActivityCompat.requestPermissions(ProfileActivity.this,
-                                                  new String[]{Manifest.permission.CAMERA},
-                                                  REQUEST_TAKE_PHOTO);
-            }
-        }
-        else {
-            dispatchTakePictureIntent();
-        }
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
-        switch (requestCode) {
-            case REQUEST_TAKE_PHOTO: {
-                // If request is cancelled, the result arrays are empty.
-                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    dispatchTakePictureIntent();
-                }
-                else {
-                    BBGDemoApplication app = (BBGDemoApplication) getApplication();
-                    app.showAlert("Failed", "This application does not have permission.");
-                }
-            }
-        }
-    }
-
-    private void dispatchTakePictureIntent() {
         Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        // Ensure that there's a camera activity to handle the intent
+        takePictureIntent.putExtra("crop","true");
         if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
-            // Create the File where the photo should go
             File photoFile = null;
             try {
                 photoFile = createImageFile();
@@ -212,10 +182,14 @@ public class ProfileActivity extends Activity {
             // Continue only if the File was successfully created
             if (photoFile != null) {
                 Uri photoURI = FileProvider.getUriForFile(this,
-                                                          "com.example.android.fileprovider",
+                                                          "com.spacetimeinsight.fileprovider",
                                                           photoFile);
                 takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
                 startActivityForResult(takePictureIntent, REQUEST_TAKE_PHOTO);
+            }
+            else {
+                Log.i(LOG_TAG, "Failed to create image file.");
+                BBGDemoApplication.showToast(ProfileActivity.this, "Failed to create image file");
             }
         }
         else {
@@ -224,19 +198,29 @@ public class ProfileActivity extends Activity {
         }
     }
 
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        if (requestCode == 0) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED
+                    && grantResults[1] == PackageManager.PERMISSION_GRANTED) {
+                takePhotoButton.setEnabled(true);
+            }
+        }
+    }
+
     private File createImageFile() throws IOException {
         // Create an image file name
         @SuppressLint("SimpleDateFormat") String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
         String imageFileName = "JPEG_" + timeStamp + "_";
         File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
-        File image = File.createTempFile(imageFileName,  /* prefix */
+        File imageFile = File.createTempFile(imageFileName,  /* prefix */
                                          ".jpg",         /* suffix */
                                          storageDir      /* directory */
                                         );
 
         // Save a file: path for use with ACTION_VIEW intents
-        currentPhotoPath = image.getAbsolutePath();
-        return image;
+        currentPhotoPath = imageFile.getAbsolutePath();
+        return imageFile;
     }
 
     @Override
@@ -267,9 +251,14 @@ public class ProfileActivity extends Activity {
             bitmap = BitmapFactory.decodeFile(currentPhotoPath, bmOptions);
             profileView.setImageBitmap(bitmap);
         }
-        else if ( requestCode == ImagePickActivity.REQUEST_CODE && resultCode == Activity.RESULT_OK ) {
+        else if ( (requestCode == ImagePickActivity.REQUEST_CODE) && (resultCode == Activity.RESULT_OK) ) {
             InputStream stream = null;
             try {
+                if ( data.getData() == null ) {
+                    BBGDemoApplication app = (BBGDemoApplication) getApplication();
+                    app.showAlert("Error", "Null data was returned.");
+                    return;
+                }
                 stream = getContentResolver().openInputStream(data.getData());
 
                 BitmapFactory.Options bmOptions = new BitmapFactory.Options();
@@ -291,11 +280,7 @@ public class ProfileActivity extends Activity {
                 photoW = bmOptions.outWidth;
                 photoH = bmOptions.outHeight;
 
-                Bitmap b = Bitmap.createBitmap(bitmap,
-                                               (photoW/2) - (targetW/2),
-                                               (photoH/2) - (targetH/2),
-                                               targetW, targetH);
-
+                Bitmap b = Bitmap.createBitmap(bitmap, 0, 0, photoW, photoH);
                 profileView.setImageBitmap(b);
             }
             catch ( FileNotFoundException e ) {

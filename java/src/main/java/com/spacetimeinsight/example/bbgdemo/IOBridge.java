@@ -17,65 +17,169 @@
  */
 package com.spacetimeinsight.example.bbgdemo;
 
+import com.spacetimeinsight.nucleuslib.datamapped.NucleusLocation;
+
 import java.io.*;
 import java.util.logging.Logger;
 
 /**
- * Read current weather and return formatted message
+ * The actual software that drives the Beaglebone is written in Python. It writes the sensor data to a four files. This
+ * class will read the files into the associated objects
  */
-public class IOBridge {
+interface IOBridge {
+    String LOG_TAG = IOBridge.class.getName();
+    Logger LOGGER = Logger.getLogger(LOG_TAG);
 
-    private static final String MESSAGE_FILENAME = "/tmp/message.dat";
-    private static final String SENSOR_FILENAME = "/tmp/sensor.dat";
-    private static final String LED_FILENAME = "/tmp/led.dat";
+    String MESSAGE_FILENAME = "/tmp/message.dat";
+    String SENSOR_FILENAME = "/tmp/sensor.dat";
+    String LED_FILENAME = "/tmp/led.dat";
+    String GPS_FILENAME = "/tmp/gps.dat";
 
-    private static final String LOG_TAG = IOBridge.class.getName();
-    private static final Logger LOGGER = Logger.getLogger(LOG_TAG);
-
-    public class SensorData {
+    class SensorData {
         double humidity;
         double temperature;
         int timestamp;
-    }
 
-    SensorData getSensorData() {
-        SensorData sd = new SensorData();
-        String sensorData = readSensor(SENSOR_FILENAME);
-        LOGGER.info("sensor data = " + sensorData);
-        if ( sensorData != null ) {
-            String[] parts = sensorData.split(",");
-            if ( parts.length == 3 ) {
-                sd.temperature = Double.parseDouble(parts[0]);
-                sd.humidity = Double.parseDouble(parts[1]);
-                sd.timestamp = Integer.parseInt(parts[2]);
+        SensorData() {
+            String sensorData = readFile(SENSOR_FILENAME);
+            LOGGER.info("sensor data = " + sensorData);
+            if ( sensorData != null ) {
+                String[] parts = sensorData.split(",");
+                if ( parts.length == 3 ) {
+                    this.temperature = Double.parseDouble(parts[0]);
+                    this.humidity = Double.parseDouble(parts[1]);
+                    this.timestamp = Integer.parseInt(parts[2]);
+                }
             }
         }
-        return sd;
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+
+            SensorData that = (SensorData) o;
+
+            return Double.compare(that.humidity, humidity) == 0 &&
+                    Double.compare(that.temperature, temperature) == 0 &&
+                    timestamp == that.timestamp;
+        }
+
+        @Override
+        public int hashCode() {
+            int result;
+            long temp;
+            temp = Double.doubleToLongBits(humidity);
+            result = (int) (temp ^ (temp >>> 32));
+            temp = Double.doubleToLongBits(temperature);
+            result = 31 * result + (int) (temp ^ (temp >>> 32));
+            result = 31 * result + timestamp;
+            return result;
+        }
     }
 
-    void writeMessage(String message) throws IOException {
+    class GPSData {
+        double lat;
+        double lng;
+        int fix;
+        int nsats;
+        double timestamp;
+        double alt;
+
+        GPSData() {
+            String gpsDataStr = readFile(GPS_FILENAME);
+            LOGGER.info("gps data = " + gpsDataStr);
+            if ( gpsDataStr != null ) {
+                String[] parts = gpsDataStr.split(",");
+                if ( parts.length == 6 ) {
+                    this.timestamp = Double.parseDouble(parts[0]);
+                    this.lat = Double.parseDouble(parts[1]);
+                    this.lng = Double.parseDouble(parts[2]);
+                    this.fix = Integer.parseInt(parts[3]);
+                    this.nsats = Integer.parseInt(parts[4]);
+                    this.alt = Double.parseDouble(parts[5]);
+                }
+            }
+        }
+        
+        NucleusLocation getLocation() {
+            return new NucleusLocation(lat,  lng, 0, 0, System.currentTimeMillis(), 0, 0, (int) alt,
+                                       nsats, 0, 0, 0, null, null, null);
+
+        }
+
+        @SuppressWarnings("SimplifiableIfStatement")
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+
+            GPSData gpsData = (GPSData) o;
+
+            if (Double.compare(gpsData.lat, lat) != 0) {
+                return false;
+            }
+            if (Double.compare(gpsData.lng, lng) != 0) {
+                return false;
+            }
+            if (fix != gpsData.fix) {
+                return false;
+            }
+            if (nsats != gpsData.nsats) {
+                return false;
+            }
+            if (Double.compare(gpsData.timestamp, timestamp) != 0) {
+                return false;
+            }
+            return Double.compare(gpsData.alt, alt) == 0;
+        }
+
+        @Override
+        public int hashCode() {
+            int result;
+            long temp;
+            temp = Double.doubleToLongBits(lat);
+            result = (int) (temp ^ (temp >>> 32));
+            temp = Double.doubleToLongBits(lng);
+            result = 31 * result + (int) (temp ^ (temp >>> 32));
+            result = 31 * result + fix;
+            result = 31 * result + nsats;
+            temp = Double.doubleToLongBits(timestamp);
+            result = 31 * result + (int) (temp ^ (temp >>> 32));
+            temp = Double.doubleToLongBits(alt);
+            result = 31 * result + (int) (temp ^ (temp >>> 32));
+            return result;
+        }
+    }
+
+    static void writeMessage(String message) throws IOException {
         FileWriter file = new FileWriter(MESSAGE_FILENAME);
         file.write(message);
         file.close();
     }
 
-    void writeLED(int r, int g, int b) throws IOException {
-        String message = r + "," + g + "," + b;
+    static void writeLED(String values) throws IOException {
         FileWriter file = new FileWriter(LED_FILENAME);
-        file.write(message);
+        file.write(values);
         file.close();
     }
 
-    private String readSensor(String fileName) {
+    static String readFile(String fileName) {
         String buffer = null;
         BufferedReader br = null;
-
         try {
             br = new BufferedReader(new FileReader(fileName));
-
             String line;
             while ( (line = br.readLine()) != null ) {
-                LOGGER.info("readLine=" + line);
+                LOGGER.finest("readLine=" + line);
                 buffer = line;
             }
         }
@@ -92,11 +196,10 @@ public class IOBridge {
             }
             catch ( IOException exception ) {
                 //empty
+                exception.printStackTrace();
             }
         }
-
-        LOGGER.fine("readSensor:" + buffer + ":" + fileName);
-
+        LOGGER.finest("readFile:" + buffer + ":" + fileName);
         return (buffer);
     }
 }
