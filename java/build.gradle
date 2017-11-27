@@ -54,8 +54,8 @@ task release(type: Zip, dependsOn: 'prepareRelease') {
     from file("./local-template.properties")
     from file("./tinylog.properties")
     from file("../README.md")
-    from file("../etc/rc.local")
     from fileTree(dir: 'scripts', include: '**/*')
+    from fileTree(dir: 'etc', include: '**/*')
 
     // Create output filename.
     baseName = 'bbg-demo'

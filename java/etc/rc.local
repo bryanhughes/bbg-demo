@@ -7,9 +7,9 @@
 # value on error.
 #
 
-nohup python /home/debian/bbgdemo/iot_demo.py >/dev/null 2>&1 &
-sleep 5
 cd /home/debian/bbgdemo
-nohup java -jar bbg-demo-1.0.jar -level severe >/dev/null 2>&1 &
+sudo ./bbg_python_service.sh start
+sleep 2
+sudo ./bbg_java_service.sh start
 
 exit 0

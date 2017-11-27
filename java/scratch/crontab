@@ -1,0 +1,2 @@
+* * * * * /home/debian/bbgdemo/bbg_python_daemon.sh start
+* * * * * /home/debian/bbgdemo/bbg_java_daemon.sh start
