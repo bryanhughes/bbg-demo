@@ -18,6 +18,8 @@ import android.util.Log;
 import android.widget.Toast;
 
 import com.google.protobuf.nano.InvalidProtocolBufferNanoException;
+import com.spacetimeinsight.bbgdemo.chat.ChatActivity;
+import com.spacetimeinsight.bbgdemo.chat.ChatArrayAdapter;
 import com.spacetimeinsight.nucleus.android.NucleusService;
 import com.spacetimeinsight.nucleuslib.Channel;
 import com.spacetimeinsight.nucleuslib.ChannelService;
@@ -671,7 +673,7 @@ public class BBGDemoApplication extends Application implements NucleusClientList
 
     @Override
     public void onMemberProfileChange(Member member) {
-        if ( currentActivity instanceof ChatActivity ) {
+        if ( currentActivity instanceof ChatActivity) {
             chatArrayAdapter.notifyDataSetChanged();
         }
     }

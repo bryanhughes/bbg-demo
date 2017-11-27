@@ -15,7 +15,7 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.spacetimeinsight.bbgdemo;
+package com.spacetimeinsight.bbgdemo.map;
 
 /**
  * (c) 2017, Space-Time Insight

@@ -15,21 +15,9 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.spacetimeinsight.bbgdemo;
+package com.spacetimeinsight.bbgdemo.chat;
 
-import android.Manifest;
-import android.annotation.SuppressLint;
-import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
-import android.provider.MediaStore;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
-import android.support.v4.content.FileProvider;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -37,18 +25,14 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.ListView;
 
+import com.spacetimeinsight.bbgdemo.BBGDemoApplication;
+import com.spacetimeinsight.bbgdemo.R;
 import com.spacetimeinsight.nucleus.android.NucleusService;
 import com.spacetimeinsight.nucleuslib.ChannelService;
 import com.spacetimeinsight.nucleuslib.datamapped.MimeMessage;
 import com.spacetimeinsight.nucleuslib.responsehandlers.ChannelPublishMessageResponseHandler;
 import com.spacetimeinsight.nucleuslib.types.OperationStatus;
 import com.spacetimeinsight.protobuf.nano.MimeMessageProto;
-
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 
 public class ChatActivity extends AppCompatActivity {
     private static final String LOG_TAG = ChatActivity.class.getName();

@@ -14,7 +14,6 @@ import android.support.annotation.NonNull;
 import android.support.design.widget.BottomNavigationView;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AlertDialog;
-import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
@@ -23,6 +22,8 @@ import android.widget.EditText;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
+import com.spacetimeinsight.bbgdemo.chat.ChatActivity;
+import com.spacetimeinsight.bbgdemo.map.MapsActivity;
 import com.spacetimeinsight.nucleus.android.NucleusService;
 import com.spacetimeinsight.nucleuslib.Channel;
 import com.spacetimeinsight.nucleuslib.NucleusException;

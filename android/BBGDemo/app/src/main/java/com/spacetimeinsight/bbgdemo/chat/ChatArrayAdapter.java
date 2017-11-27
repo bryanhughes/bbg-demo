@@ -15,7 +15,7 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.spacetimeinsight.bbgdemo;
+package com.spacetimeinsight.bbgdemo.chat;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -29,6 +29,8 @@ import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import com.spacetimeinsight.bbgdemo.BBGDemoApplication;
+import com.spacetimeinsight.bbgdemo.R;
 import com.spacetimeinsight.nucleus.android.NucleusService;
 import com.spacetimeinsight.nucleuslib.Channel;
 import com.spacetimeinsight.nucleuslib.Member;
@@ -49,7 +51,7 @@ import java.util.Map;
 /**
  * (c) 2017, Space-Time Insight
  */
-class ChatArrayAdapter extends ArrayAdapter<ChannelMessage> {
+public class ChatArrayAdapter extends ArrayAdapter<ChannelMessage> {
     private static final String LOG_TAG = ChatArrayAdapter.class.getName();
     private BBGDemoApplication bbgDemoApplication;
 

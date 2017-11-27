@@ -7,37 +7,57 @@ to work with because it comes pre-loaded with Debian!
 NOTE: This README assumes you are familiar with the Beaglebone Green Wireless.
 
 This project demonstrates how easy it is to build a Beaglebone Green IoT device and connect to the SpaceTime IoT Warp platform 
-using the Nucleus SDKs.  This code has been tested with a Beaglebone Green Wireless, with a Grove Chainable RBG LED, Grove Temperature & Humidity Sensor Pro,
-and the Grove OLED 64x64 Display.
+using the Nucleus SDKs.  This code has been tested with a Beaglebone Green Wireless, a Grove Chainable RBG LED, Grove 
+Temperature & Humidity Sensor Pro, and the Grove OLED 64x64 Display.
 
 This project provides the following features:
 
-- Stream real-time temperature and humidity from the IoT Device
-- Control the LED light on the IoT Device
-- Display a message on the OLED screen of the IoT Device
-- Ask the IoT Device chat bot running on the device questions
+- Stream real-time temperature, humidity, and GPS sensor data from the IoT Device
+- Control the LED light on the IoT Device from your Android phone or a command line
+- Display a message on the OLED screen of the IoT Device from your Android phone or a command line
+- Ask the IoT Device chat bot running on the device questions, such as "how hot is it?"
 
 The project includes the following components:
+
 - A Beaglebone Green Wireless IoT Devices with temperature, humidity, and GPS sensor inputs
-- A Java console app to control the IoT Device
-- An Android app to view the sensor data, control the device, and chat with the chat bot
+- A Java console command line app to control the IoT Device
+- An Android app to view the sensor data, control the device, find it on a map, and chat with the chat bot
 
-If you are starting from scratch, please follow the instructions for [Getting Started](http://beagleboard.org/getting-started). Once you have your Beaglebone connected and accessible, go ahead and SSH onto the device.
+This projects demonstrates several key features of the Space Time IoT Platform that would the basis for any application.
 
-This project is composed of several Python scripts, two Java apps, and an Android app. The Python scripts do the actual
-controlling of the Beaglebone sensors. The main script to run all the parts in the background is `run_bbg.sh`. This simply
-runs the main python script `iot_demo.py` and the java application started by `run_bbg_java.sh`. This needs to be run as `sudo`.
+- Using the Java SDK to drive an embedded network connected device (the Beaglebone)
+- Using the Android SDK to build a mobile app to connect with, stream from, and control the IoT Device
+- Using a `channel`
+- Using `channel properties` to control devices connected to a shared channel
+- Real-time messaging by `publishing chat messages` on the channel
+- Listening to changes in the channel topics, specifically the `telemetry topic`, `member_location`, `channel_messages`, and `properties`
 
-    $ sudo ./run_bbg.sh
+If you are starting from scratch, please follow the instructions for [Getting Started](http://beagleboard.org/getting-started). 
+Once you have your Beaglebone connected and accessible, go ahead and SSH onto the device.
+
+This project is composed of several Shell and Python scripts, two Java apps, and an Android app. The Python scripts do the actual
+controlling of the Beaglebone sensors. Once you install the demo, it should then always start at boot and you are done. 
 
 It is possible to run the the python `iot_demo.py` and `run_bbg_java.sh` in separate terminals if you are interested in the
 console output. Please note that `run_bbg_java.sh` has an option to set the log level. The default is `severe`. These are
 standard Java log levels. If you want more detail, try `info`.
 
-The Java application implements the Nucleus SDK that provides connectivity and reads sensor data
-and writes out control changes. Their is also a standalone java Console application that allows you to send messages and LED changes
-to the Beaglebone from the command line of any computer. Simply unzip the release onto the other computer in any working directory and 
-then type `./run_console.sh`. The Android application is a very simple mobile application that allows
+In terminal #1
+
+    $ sudo python ./iot_demo.py
+
+In terminal #2
+
+    $ sudo ./run_bbg_java.sh
+    
+*NOTE:* This needs to be run as `sudo`.    
+
+The Java application implements the Nucleus SDK that provides connectivity and reads sensor data and writes out control 
+changes. The Python scripts to the actual reading and control of the various sensors. 
+
+There is also a standalone java Console application that allows you to send messages and LED changes to the 
+Beaglebone from the command line of any computer. Simply unzip the release onto the other computer in any working 
+directory and then type `./run_console.sh`. The Android application is a very simple mobile application that allows
 you to control the LED on the Beaglebone, as well as send messages to be displayed on the OLED screen.
 
 This tutorial goes over assembling the kit and getting started with a dashboard of your own. Specifically, you will:
@@ -49,11 +69,11 @@ developed with the Warp IoT SDK
 * Send collected data to a real-time mobile application developed with the Warp IoT SDK
 
 #### What Exactly Can You Do?
-This project demonstrates how to stream telemetry data, temperature and humidity, from the Beaglebone Green Wireless 
-to the SpaceTime IoT Warp Platform via the Warp IoT SDK. It also demonstrates how to send back messages to the device 
-to control it. Their are two elements on the Beaglebone that you can control, the LED light and the message displayed 
-on the OLED screen. When there is no specific message being displayed, or after 5 minutes of displaying the custom 
-message, the device switches back to display the temperature and humidity.
+This project demonstrates how to stream telemetry data, temperature and humidity, and GPS location data from the 
+Beaglebone Green Wireless to the SpaceTime IoT Warp Platform via the Warp IoT SDK. It also demonstrates how to send 
+back messages to the device to control it. Their are two elements on the Beaglebone that you can control, the LED light 
+and the message displayed on the OLED screen. When there is no specific message being displayed, or after 5 minutes of 
+displaying the custom message, the device switches back to display the temperature and humidity.
 
 Let's get started!
 
@@ -95,11 +115,7 @@ Beaglebone Green cape, make sure the P8 and P9 headers are aligned with the cape
 Next, find the GPIO grove connector marked 50 and attach the LED Chainable Sensor
 ![led_connection](docs/images/led_connection.jpg)
 
-Finally, connect the GPS to UART 4 on the Grove cape. You may need to enable UART4. If you have any issues, please
-reference the following two resources:
-
-http://www.erdahl.io/2016/08/talking-serial-over-beaglebone-green.html
-http://beaglebone.cameon.net/home/serial-ports-uart
+Finally, connect the GPS to UART 4 on the Grove cape.  
 
 # WARNING
 ```
@@ -130,6 +146,10 @@ $ screen /dev/tty.usbmodem1425 115200
 As the documentation explains, the mounted device should set up a USB network between the laptop and the device. The
 address of the device will be 192.168.7.2.
 
+> Note: These commands should all work if you are SSHed in as the root user. If you're working as the debian user, which
+is recommended, you may need to add "sudo" to the front of the commands. The default password for the Beaglebone is "temppwd".
+
+
 #### Configuring The Wifi
 There are [instructions](https://beagleboard.org/green-wireless) for configuring the wifi on the Beaglebone by connecting 
 to the SeeedStudio BeagleBone Green Wireless AP and then selecting your SSID and entering your passphrase.
@@ -151,45 +171,84 @@ Test your connection...
     $ ping yahoo.com	
 
 ### Update The Software
-When you're in, update your software:
+When you're in, you will need to make sure that the UART-4 serial port is enabled. To do this, you will need to edit
+the `/boot/uEnv.txt`. Be very careful modifying this file.
+
+    $ sudo vi /boot/uEnv.txt 
+
+Find the section for v4.1.x and uncomment the `cape_enable` and then add `BB_UART4`
 
 ```
-apt-get update
-apt-get upgrade
+##Example v4.1.x
+#cape_disable=bone_capemgr.disable_partno=
+cape_enable=bone_capemgr.enable_partno=BB-UART4
 ```
+
+After reboot, the device is present in the device list. UART-4 is linked as ttyO4:
+
+```
+$ ls -l /dev/ttyO*
+lrwxrwxrwx 1 root root 5 Nov 26 23:00 /dev/ttyO0 -> ttyS0
+lrwxrwxrwx 1 root root 5 Nov 26 23:00 /dev/ttyO3 -> ttyS3
+lrwxrwxrwx 1 root root 5 Nov 26 23:00 /dev/ttyO4 -> ttyS4
+```
+
+Next, update your software:
+
+    $ sudo apt-get update
+    $ sudo apt-get upgrade
+
 Now update your kernel (you should be running Debian by default) and reboot:
 
-```
-cd /opt/scripts/tools/
-./update_kernel.sh
-reboot
-```
+
+    $ cd /opt/scripts/tools/
+    $ git pull
+    $ sudo ./update_kernel.sh
+    $ sudo reboot
 
 Your SSH connection should drop, but you can pull it back up as soon as the Beaglebone finishes rebooting.
+Once the device has rebooted, create a working directory that you will install and run the release from
 
-> Note: These commands should all work if you are SSHed in as the root user. If you're working as the debian user, you may need to add "sudo" to the front of the commands. The default password for the Beaglebone is "temppwd".
+    $ mkdir /home/debian/bbgdemo    
 
-Next, you will need to have Java 8 JDK [installed on your BBG](http://beagleboard.org/project/java/). 
+### Installing Java
 
+Next, you will need to manually download and install Java 8 JDK [installed on your BBG](http://beagleboard.org/project/java/) 
+on your Beaglebone. Install it at `/opt/java` and then link it (assuming you are installing jdk1.8.0_151). Unfortunately
+the apt-get install seems to be broken.
+
+    $ cd /opt/java
+    $ $ sudo ln -s ./jdk1.8.0_151/ ./jdk 
+
+### Installing The Python Components
+
+First, make sure your Python is up to date. This is all done on the Beaglebone. 
+
+    $ sudo apt-get install build-essential python-dev
+
+Next, you will need to download the [Adafruit Python DHT Sensor Library](https://github.com/adafruit/Adafruit_Python_DHT.git)
+
+    $ cd ~
+    $ git clone https://github.com/adafruit/Adafruit_Python_DHT.git 
+    
+Change into the directory and follow the instructions in the README.md.
+
+Finally, you will need to install the [Adafruit Python ADXL345](https://github.com/adafruit/Adafruit_Python_ADXL345) libraries. You
+can either do this manually, or you can install from pip with:
+
+    $ sudo pip install adafruit-adxl345        
 
 ## Building Your Project
-Everything you need to build, or rebuild the project, is included in this project. The project uses Gradle and 
-includes a `build.gradle`. If you are using Eclipse or IntelliJ, simply import the project from sources. Please note, this
-project is to be built on your laptop, not the Beaglebone. 
+You should now be ready to build your project. Everything you need is included. The first step is to build and create
+your release on your laptop. Please note that this has only been tested on a Mac and NOT on Windows. The project uses 
+Gradle and includes a `build.gradle`. If you are using Eclipse or IntelliJ, simply import the project from sources. 
+Please note, this project is to be built on your laptop, not on the Beaglebone. 
 
 The tasks to build the project are: 
 
-	./gradle clean build release
+	$ ./gradle clean build release
 	
-## Installing Your Release
-
-After you have built the project, navigate to the `release` directory to find the `bbg-demo-1.0.zip` file. You will need to
-secure copy this file to your Beaglebone Green. It is recommended that you make a bbgdemo directory on the Beaglebone Green
-under the home directory.
-
-    $ scp release/bbg-demo-1.0.zip debian@<ip-addresss>:bbgdemo
-    
-For example, on the Beaglebone, there is a working directory called `bbgdemo` in the debian home directory:
+You should see the following output:
 
 ```
     $ gradle clean build release
@@ -200,7 +259,20 @@ For example, on the Beaglebone, there is a working directory called `bbgdemo` in
     
     BUILD SUCCESSFUL in 1s
     8 actionable tasks: 8 executed
-    $ scp release/bbg-demo-1.0.zip debian@192.168.43.224:bbg
+```
+
+## Installing Your Release
+
+After you have built your release, navigate to the `release` directory to find the `bbg-demo-1.0.zip` file. You will need to
+secure copy this file to your Beaglebone Green. It is recommended that you make a bbgdemo directory on the Beaglebone Green
+under the home directory.
+
+    $ scp release/bbg-demo-1.0.zip debian@<ip-addresss>:bbgdemo
+    
+For example, on the Beaglebone, is a working directory called `bbgdemo` in the debian home directory:
+
+```
+    $ scp release/bbg-demo-1.0.zip debian@192.168.43.224:bbgdemo
     Debian GNU/Linux 8
     
     BeagleBoard.org Debian Image 2016-11-06
@@ -210,24 +282,29 @@ For example, on the Beaglebone, there is a working directory called `bbgdemo` in
     default username:password is [debian:temppwd]
     
     debian@192.168.43.224's password:
-    bbg-demo-1.0.zip                                                                                                                                                          100% 1683KB 152.9KB/s   00:11
-    bryan@Yetitronic:~/git/bbg-demo/java$    
 ```
-Back on the device, unzip the file. You will see the executable JAR and supporting libraries.
 
-Next, edit the local.properties file and set the api_accountid, api_accounttoken, api_key, and api_token to the values 
-of your account and partition from the nucleus application console. For the out of the box demo, simply copy the 
-`local-template.properties` file to `local.properties`. This will have the necessary credentials and tokens to connect
-to the SpaceTime demo server.
+Back on the device, unzip the file and run `install_bbgdemo.sh`
 
-    $ cp local-template.properties local.properties
+    $ sudo ./install_bbgdemo.sh
+    
+This will copy over the `local.properties` using the default template and create the `serial.dat` file, and install the
+`rc.local` boot file. Note, this demo out of the box uses the Space Time demo Nucleus server. If you run this application 
+out of a different partition or server, you will need to update the `local.properties` file accordingly.    
 
-Also, if you want your device to be at a specific location in the world, be sure to edit the `local.properties` file and 
-set the latitude and longitude of your station, along with its name, and a site name.
+If you do this, edit the local.properties file and set the api_accountid, api_accounttoken, api_key, and api_token to the values 
+of your account and partition from the nucleus application console. 
 
-To find you location, simply open [https://www.google.com/maps](https://www.google.com/maps) and find your location on the map. 
-Zoom in to get a precise location (or enter the address). Click and hold for a moment and you will get the latitude and longitude 
-coordinates of that location.
+Also, if you want to custom your device, you can change the device name here, as well as the channel name. Please note that
+if you change the name, you will need to update this in the local.properties for the Java Console app, as well as in
+the `Config.java` file in the Android project.
+
+The BBG Demo includes a Grove GPS. If for whatever reason this is not working, you can manually set your devices location, 
+also in the `local.properties`. To find you location, simply open [https://www.google.com/maps](https://www.google.com/maps) 
+and find your location on the map. Zoom in to get a precise location (or enter the address). Click and hold for a moment 
+and you will get the latitude and longitude coordinates of that location.
+
+Please note that the GPS reading from the device will over write any manually set location.
 
 To test that everything is working, run each of the components in two separate terminal windows. In the first window, start 
 up the Python scripts that will drive the sensors 
@@ -241,27 +318,35 @@ In the second window, start up that Java application
 Your Beaglebone Green should now be reporting the temperature and humidity of your location and should be displaying it on
 the OLED screen. Please note that the LED flashes on startup. It does take a minute to startup.
 
-Once you have confirmed everything is in working order, CTRL-C out of each of the apps and then in a single terminal run 
-the single script:
+Finally, you will need to set up `logrotate` to ensure that the log files do not fill up the device. 
 
-    $ sudo ./run_bbg.sh
+    $ sudo vi /etc/logrotate.conf
     
-### Setting Up To Run On Boot
-Once you have determine everything is working as advertised, if you want the device to run on boot, copy the `rc.local` 
-to `/etc`. The script `/etc/rc.local` is for use by the system administrator. It is traditionally executed after all the 
-normal system services are started, at the end of the process of switching to a multiuser runlevel.
+And add the following to the bottom of the file    
+ 
+```    
+/var/log/bbg_java.log {
+    missingok
+    daily
+    create 0664 root utmp
+    rotate 1
+}
 
-    $ cp rc.local /etc 
+/var/log/bbg_python.log {
+    missingok
+    daily
+    create 0664 root utmp
+    rotate 1
+}
+```
 
-PLEASE NOTE: That if you are demoing or have moved this device to a new network, you will need to first set up the WiFi following
-the instructions above. In this case, after you set up the WiFi, issue a reboot from the command line.
-
-    $ sudo reboot 
+Once you have confirmed everything is in working order, CTRL-C out of each of the apps and reboot your device. Everything
+should start running
 
 ![assembled_off_top_1](docs/images/assembled_on_top.jpg)
 The assembled device running
 
-
+    
 ## Using The Command Line Console
 To control the LED or send a message, back on your laptop, you can either unzip the `bbg-demo-1.0.zip` in the release directory, 
 or move it to another temp directory. In it, you will find another script called `bbg_console.sh`. If you run this, you can

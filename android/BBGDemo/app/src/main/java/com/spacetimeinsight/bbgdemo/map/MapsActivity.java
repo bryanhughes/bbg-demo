@@ -1,4 +1,4 @@
-package com.spacetimeinsight.bbgdemo;
+package com.spacetimeinsight.bbgdemo.map;
 
 import android.content.Context;
 import android.content.pm.PackageManager;
@@ -22,11 +22,12 @@ import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.MapsInitializer;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
-import com.google.android.gms.maps.UiSettings;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.spacetimeinsight.bbgdemo.BBGDemoApplication;
+import com.spacetimeinsight.bbgdemo.R;
 import com.spacetimeinsight.nucleus.android.NucleusService;
 import com.spacetimeinsight.nucleuslib.Channel;
 import com.spacetimeinsight.nucleuslib.Datapoint;

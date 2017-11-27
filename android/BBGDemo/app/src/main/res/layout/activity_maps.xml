@@ -5,4 +5,4 @@
           android:name="com.google.android.gms.maps.SupportMapFragment"
           android:layout_width="match_parent"
           android:layout_height="match_parent"
-          tools:context="com.spacetimeinsight.bbgdemo.MapsActivity"/>
+          tools:context="com.spacetimeinsight.bbgdemo.map.MapsActivity"/>

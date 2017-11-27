@@ -70,7 +70,6 @@ public class ProfileActivity extends Activity {
     private Button takePhotoButton;
     private boolean hasEdit = false;
     private boolean fromSession = false;
-    private Uri file;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -154,7 +153,6 @@ public class ProfileActivity extends Activity {
                 BBGDemoApplication app = (BBGDemoApplication) getApplication();
                 app.showAlert("Error", "Failed to save profile");
                 Log.e(LOG_TAG, "Failed to save profile - " + operationStatus + "(" + statusCode + ") " + errorMessage);
-                finish();
             }
         });
     }
