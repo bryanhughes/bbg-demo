@@ -23,7 +23,8 @@ The project includes the following components:
 - A Java console command line app to control the IoT Device
 - An Android app to view the sensor data, control the device, find it on a map, and chat with the chat bot
 
-This projects demonstrates several key features of the Space Time IoT Platform that would the basis for any application.
+This project demonstrates several key features of the Space Time IoT Platform that would the basis for any application, 
+and just how incredibly fast it is to build an end to end solution.
 
 - Using the Java SDK to drive an embedded network connected device (the Beaglebone)
 - Using the Android SDK to build a mobile app to connect with, stream from, and control the IoT Device
