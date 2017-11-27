@@ -50,15 +50,16 @@ if __name__=="__main__":
         try:
             x = g.read()  # Read from GPS
             [t, fix, sats1, alt, lat1, lat_ns, lng1, lng_ew] = g.vals()  # Get the individual values
+
             if lat_ns == "N":
-                latstr = str(float(lat1) / 100)
+                latstr = str(g.decimal_degrees(float(lat1)))
             else:
-                latstr = str(-float(lat1) / 100)
+                latstr = str(-g.decimal_degrees(float(lat1)))
 
             if lng_ew == "W":
-                lngstr = str(-float(lng1) / 100)
+                lngstr = str(-g.decimal_degrees(float(lng1)))
             else:
-                lngstr = str(float(lng1) / 100)
+                lngstr = str(g.decimal_degrees(float(lng1)))
 
             if ( lat0 != lat1) and (lng0 != lng1) and (sats0 != sats1):
                 gps_str = t + "," + latstr + "," + lngstr + "," + fix + "," + sats1 + "," + alt
@@ -100,6 +101,12 @@ if __name__=="__main__":
                 grove_oled.oled_putString('Temp:{0:0.1f}C'.format(temperature1))
                 grove_oled.oled_setTextXY(1, 0)
                 grove_oled.oled_putString('Hum: {0:0.1f}%'.format(humidity1))
+                grove_oled.oled_setTextXY(2, 0)
+                grove_oled.oled_putString("            ")
+                grove_oled.oled_setTextXY(3, 0)
+                grove_oled.oled_putString('{0:0.5f}'.format(lat0))
+                grove_oled.oled_setTextXY(4, 0)
+                grove_oled.oled_putString('{0:0.5f}'.format(lng0))
             else:
                 message = message_file.readline()
                 print('message = ' + message)
@@ -110,11 +117,17 @@ if __name__=="__main__":
                 time.sleep(2)
 
                 grove_oled.oled_setTextXY(0, 0)
-                grove_oled.oled_putString("           ")
+                grove_oled.oled_putString("            ")
                 grove_oled.oled_setTextXY(0, 0)
                 grove_oled.oled_putString(message)
                 grove_oled.oled_setTextXY(1, 0)
-                grove_oled.oled_putString("           ")
+                grove_oled.oled_putString("            ")
+                grove_oled.oled_setTextXY(2, 0)
+                grove_oled.oled_putString("            ")
+                grove_oled.oled_setTextXY(3, 0)
+                grove_oled.oled_putString("            ")
+                grove_oled.oled_setTextXY(4, 0)
+                grove_oled.oled_putString("            ")
                 msgCountDown = 10
                 clear = 1
         else:
@@ -126,10 +139,10 @@ if __name__=="__main__":
             c = '-'
         else:
             c = '+'
-        grove_oled.oled_setTextXY(2, 0)
-        grove_oled.oled_putString(c)
-        grove_oled.oled_setTextXY(5, 0)
+        grove_oled.oled_setTextXY(6, 0)
         grove_oled.oled_putString("SpaceTime")
+        grove_oled.oled_setTextXY(6, 10)
+        grove_oled.oled_putString(c)
 
         # The same for what to do with our LED
         try:
@@ -145,5 +158,3 @@ if __name__=="__main__":
                 print('An error occured setting LED RGB.')
         except:
             pass
-
-        time.sleep(.5)

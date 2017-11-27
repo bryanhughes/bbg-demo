@@ -67,9 +67,11 @@ public class ChatArrayAdapter extends ArrayAdapter<ChannelMessage> {
         NucleusService nucleusService = BBGDemoApplication.getNucleusService();
         String channelRef = nucleusService.getCurrentChannelRef();
         if ( channelRef == null ) {
-            bbgDemoApplication.showAlert("Warning",
-                                         "You are not in an active channel. Please either create or join one.");
             Log.e(LOG_TAG, "Null channelRef - not in an active channel");
+            if ( bbgDemoApplication != null ) {
+                bbgDemoApplication.showAlert("Warning",
+                                             "You are not in an active channel. Please either create or join one.");
+            }
         }
         else {
             if (message.getOffset() > 0x0fffffff) {

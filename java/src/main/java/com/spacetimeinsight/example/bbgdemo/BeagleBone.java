@@ -566,7 +566,8 @@ public class BeagleBone implements NucleusClientListener
             else if ( message.contains("what time is it") ) {
                 sendResponse("System time is " + System.currentTimeMillis());
             }
-            else if ( message.contains("what is the temperature") ) {
+            else if ( message.contains("what is the temperature") || message.contains("how hot is it") ||
+                    message.contains("how warm is it")  || message.contains("how cold is it")) {
                 String response = "The temperature is " + temp + "C right now";
                 sendResponse(response);
             }
@@ -574,7 +575,7 @@ public class BeagleBone implements NucleusClientListener
                 String response = "The humidity is " + hum + "% right now";
                 sendResponse(response);
             }
-            else if ( message.contains("how are you") ) {
+            else if ( message.contains("are you") ) {
                 String response = howAmI(member.getScreenName()) + "\n\nIt is currently " + temp + " C and " +
                         hum + " % humidity";
                 sendResponse(response);
