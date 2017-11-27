@@ -39,28 +39,6 @@ Once you have your Beaglebone connected and accessible, go ahead and SSH onto th
 This project is composed of several Shell and Python scripts, two Java apps, and an Android app. The Python scripts do the actual
 controlling of the Beaglebone sensors. Once you install the demo, it should then always start at boot and you are done. 
 
-It is possible to run the the python `iot_demo.py` and `run_bbg_java.sh` in separate terminals if you are interested in the
-console output. Please note that `run_bbg_java.sh` has an option to set the log level. The default is `severe`. These are
-standard Java log levels. If you want more detail, try `info`.
-
-In terminal #1
-
-    $ sudo python ./iot_demo.py
-
-In terminal #2
-
-    $ sudo ./run_bbg_java.sh
-    
-*NOTE:* This needs to be run as `sudo`.    
-
-The Java application implements the Nucleus SDK that provides connectivity and reads sensor data and writes out control 
-changes. The Python scripts to the actual reading and control of the various sensors. 
-
-There is also a standalone java Console application that allows you to send messages and LED changes to the 
-Beaglebone from the command line of any computer. Simply unzip the release onto the other computer in any working 
-directory and then type `./run_console.sh`. The Android application is a very simple mobile application that allows
-you to control the LED on the Beaglebone, as well as send messages to be displayed on the OLED screen.
-
 This tutorial goes over assembling the kit and getting started with a dashboard of your own. Specifically, you will:
 
 * Assemble the Beaglebone Green Wireless with Seeed Grove Cape
@@ -308,16 +286,34 @@ and you will get the latitude and longitude coordinates of that location.
 Please note that the GPS reading from the device will over write any manually set location.
 
 To test that everything is working, run each of the components in two separate terminal windows. In the first window, start 
-up the Python scripts that will drive the sensors 
+up the Python scripts that will drive the sensors: 
 
 	$ sudo python iot_demo.py
 	
-In the second window, start up that Java application
+In the second window, start up that Java application:
 
     $ sudo ./run_bbg_java.sh
     
+Please note that `run_bbg_java.sh` has an option to set the log level. The default is `severe`. These are
+standard Java log levels. If you want more detail, try `info`.
+    
 Your Beaglebone Green should now be reporting the temperature and humidity of your location and should be displaying it on
 the OLED screen. Please note that the LED flashes on startup. It does take a minute to startup.
+
+The Java application implements the Nucleus SDK that provides connectivity and reads sensor data and writes out control 
+changes. The Python scripts to the actual reading and control of the various sensors. 
+
+You will also note two other shell scripts: `bbg_java_service.sh` and `bbg_python_serivce.sh`. These two scripts of the 
+actual scripts that are called by the `rc.local` boot to start the services. Use these to stop or restart the services
+if needed.
+
+    $ sudo ./bbg_java_service.sh start
+    
+##### The Console    
+There is also a standalone java Console application that allows you to send messages and LED changes to the 
+Beaglebone from the command line of any computer. Simply unzip the release onto the other computer in any working 
+directory and then type `./run_console.sh`. The Android application is a very simple mobile application that allows
+you to control the LED on the Beaglebone, as well as send messages to be displayed on the OLED screen.
 
 Finally, you will need to set up `logrotate` to ensure that the log files do not fill up the device. 
 
