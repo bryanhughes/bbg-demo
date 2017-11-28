@@ -17,11 +17,10 @@
  */
 package com.spacetimeinsight.bbgdemo;
 
-public class Config {
-
+class Config {
     static String PROTOCOL = "http";
     static String HOSTNAME = "nucleus.demo2.go-factory.com";
     static int PORT = 80;
-    public static String API_ACCOUNTID = "a7414c322_b79c_366a_b7fc_6995a6b91e1b";
-    public static String API_ACCOUNTTOKEN = "WitvnVbTE78gdymXoU5gcqMyLacR0Jj/n4MWxMGPehF7+tejtzPvZCSU20UPfS2QKs0UPvPWsDFN";
+    static String API_ACCOUNTID = "a7414c322_b79c_366a_b7fc_6995a6b91e1b";
+    static String API_ACCOUNTTOKEN = "WitvnVbTE78gdymXoU5gcqMyLacR0Jj/n4MWxMGPehF7+tejtzPvZCSU20UPfS2QKs0UPvPWsDFN";
 }

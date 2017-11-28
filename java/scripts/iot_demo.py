@@ -43,6 +43,11 @@ if __name__=="__main__":
     sats0 = 0
     c = '+'
 
+    lat = 0.0
+    lng = 0.0
+    latY = 0
+    lngY = 0
+
     g = grove_gps.GPS()
 
     while True:
@@ -52,17 +57,33 @@ if __name__=="__main__":
             [t, fix, sats1, alt, lat1, lat_ns, lng1, lng_ew] = g.vals()  # Get the individual values
 
             if lat_ns == "N":
-                latstr = str(g.decimal_degrees(float(lat1)))
+                lat = g.decimal_degrees(float(lat1))
+                # HACK! Can not seem to get format() to work properly on the OLED display
+                if int(float(lat1)) <= 9999:
+                    latY = 2
+                else:
+                    latY = 1                
             else:
-                latstr = str(-g.decimal_degrees(float(lat1)))
+                lat = -g.decimal_degrees(float(lat1))
+                if (int(float(lat1)) <= 9999):
+                    latY = 1
 
             if lng_ew == "W":
-                lngstr = str(-g.decimal_degrees(float(lng1)))
+                lng = -g.decimal_degrees(float(lng1))
+                if int(float(lng1)) <= 9999:
+                    lngY = 1
             else:
-                lngstr = str(g.decimal_degrees(float(lng1)))
+                lng = g.decimal_degrees(float(lng1))
+                if int(float(lng1)) <= 9999:
+                    lngY = 2
+                else:
+                    lngY = 1
+
+            print "lat >>>" + str(int(float(lat1)))
+            print "lng >>>" + str(int(float(lng1)))
 
             if ( lat0 != lat1) and (lng0 != lng1) and (sats0 != sats1):
-                gps_str = t + "," + latstr + "," + lngstr + "," + fix + "," + sats1 + "," + alt
+                gps_str = t + "," + str(lat) + "," + str(lng) + "," + fix + "," + sats1 + "," + alt
                 gps_file = open(GPS_FILENAME, "w")
                 gps_file.write(gps_str)
                 gps_file.close()
@@ -103,10 +124,10 @@ if __name__=="__main__":
                 grove_oled.oled_putString('Hum: {0:0.1f}%'.format(humidity1))
                 grove_oled.oled_setTextXY(2, 0)
                 grove_oled.oled_putString("            ")
-                grove_oled.oled_setTextXY(3, 0)
-                grove_oled.oled_putString('{0:0.5f}'.format(lat0))
-                grove_oled.oled_setTextXY(4, 0)
-                grove_oled.oled_putString('{0:0.5f}'.format(lng0))
+                grove_oled.oled_setTextXY(3, latY)
+                grove_oled.oled_putString('{:>3.6f}'.format(lat))
+                grove_oled.oled_setTextXY(4, lngY)
+                grove_oled.oled_putString('{:>3.6f}'.format(lng))
             else:
                 message = message_file.readline()
                 print('message = ' + message)

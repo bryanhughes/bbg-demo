@@ -50,6 +50,7 @@ public class BeagleBone implements NucleusClientListener
     private IOBridge.SensorData sensorData = null;
     private IOBridge.GPSData gpsData = null;
     private Random rand = new Random(System.currentTimeMillis());
+    private NucleusLocation cachedLocation;
 
     private BeagleBone(String[] args) throws IOException {
 
@@ -91,6 +92,20 @@ public class BeagleBone implements NucleusClientListener
         }
 
         NucleusLocation loc = (new IOBridge.GPSData()).getLocation();
+
+        f = new File("cached-location.dat");
+        if( f.exists() && !f.isDirectory()) {
+            BufferedReader bufferedReader = new BufferedReader(new FileReader(f));
+            String line = bufferedReader.readLine();
+            String[] parts = line.split(",");
+
+            cachedLocation = new NucleusLocation(Float.valueOf(parts[0]), Float.valueOf(parts[1]), 0, 0,
+                                                 Long.valueOf(parts[4]), 0, 0,
+                                                 Integer.valueOf(parts[2]), Integer.valueOf(parts[3]), 0, 0, 0, null, null, null);
+        }
+        else {
+            cachedLocation = NucleusClientCore.NullLocation;
+        }
 
         manufacturer = "Seeed";
         serialNumber = serialNo;
@@ -316,16 +331,17 @@ public class BeagleBone implements NucleusClientListener
         });
     }
 
-    private void sendData() {
+    private void sendData()
+            throws IOException {
         IOBridge.SensorData sensorData = new IOBridge.SensorData();
         IOBridge.GPSData gpsData = new IOBridge.GPSData();
 
         // The location is a field of Datapoint. It is possible, though unlikely, that our temperature sensor is stable
         // but we are moving.
-        NucleusLocation loc = gpsData.getLocation();
-        EnvData envData = new EnvData(sensorData.timestamp, sensorData.temperature, 0, sensorData.humidity, 0);
-
         if ( ! sensorData.equals(this.sensorData) || ! gpsData.equals(this.gpsData) ) {
+            NucleusLocation loc = getLocation(gpsData);
+            EnvData envData = new EnvData(sensorData.timestamp, sensorData.temperature, 0, sensorData.humidity, 0);
+
             EnvDataProto.EnvData envDataProto = envData.toProtoBuffer();
             DeviceService deviceService = nucleusClient.getDeviceService();
             Datapoint datapoint = deviceService.newDatapoint(100, loc, "sample", 0, HealthType.NORMAL,
@@ -673,6 +689,31 @@ public class BeagleBone implements NucleusClientListener
     @Override
     public void onMemberPresenceChange(Member member) {
 
+    }
+
+    private NucleusLocation getLocation(IOBridge.GPSData gpsData)
+            throws IOException {
+        NucleusLocation location;
+        if ( (gpsData != null) && (gpsData.lat == 0.0) && (gpsData.lng == 0.0) ) {
+            location = cachedLocation;
+        }
+        else if ( gpsData != null )  {
+            location = gpsData.getLocation();
+            cacheLocation(location);
+        }
+        else {
+            location = NucleusClientCore.NullLocation;
+        }
+        return location;
+    }
+
+    private void cacheLocation(NucleusLocation location)
+            throws IOException {
+        FileWriter fileWriter = new FileWriter("cached-location.dat");
+        fileWriter.write(location.getLatitude() + "," + location.getLongitude() + "," + location.getAltitude() +
+                                 "," + location.getNumSatellites() + "," + location.getTimestamp());
+        fileWriter.close();
+        cachedLocation = location;
     }
 }
 
