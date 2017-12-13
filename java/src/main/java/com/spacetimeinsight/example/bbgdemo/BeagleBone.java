@@ -123,14 +123,15 @@ public class BeagleBone implements NucleusClientListener
         String msg = "Using the following values:\n  DeviceID:      " + deviceID +
                                                 "\n  Screen Name:   " + screenName +
                                                 "\n  Location:      " + loc +
-                                                "\n  Serial Number: " + serialNumber;
+                                                "\n  Serial Number: " + serialNumber +
+                                                "\n  User Dir:      " + userDir;
         Logger.info(msg);
         System.out.println(msg);
 
         ClientDevice device = NucleusFactory.clientDevice(deviceID, DeviceType.discoverMatchingEnum(deviceType),
                                                           manufacturer, modelIdentifier, serialNumber,
                                                           osVersion, os);
-        nucleusClient = new NucleusClient(device, apiAccountID, apiAccountToken);
+        nucleusClient = new NucleusClient(device, apiAccountID, apiAccountToken, userDir);
         nucleusClient.setServerTarget("http", SERVER_URL, SERVER_PORT);
         nucleusClient.setActivePartition(apiKey, apiToken);
         nucleusClient.addListener(this);
@@ -183,7 +184,7 @@ public class BeagleBone implements NucleusClientListener
 
     private void createChannel(String channelName) {
         final ChannelService channelService = nucleusClient.getChannelService();
-        NucleusLocation loc = gpsData.getLocation();
+        NucleusLocation loc = (gpsData != null ? gpsData.getLocation() : Driver.myLocation);
         GeoCircle circle = new GeoCircle(loc.getLatitude(), loc.getLongitude(), 100);
         channelService.createChannel(circle, -1, -1, channelName, null, "Site", false,
                                      null, shortDescription, longDescription, new ChannelCreateResponseHandler() {
@@ -223,10 +224,7 @@ public class BeagleBone implements NucleusClientListener
         final ChannelService channelService = nucleusClient.getChannelService();
 
         Map<JoinOption, Object> joinOptions = new HashMap<>();
-        List<TopicOffset> offsets = new ArrayList<>();
-        offsets.add(new TopicOffset(channelRef, TopicType.EChannelMessage, -1, 1));
-        offsets.add(new TopicOffset(channelRef, TopicType.EProperty, -1, 1));
-        joinOptions.put(JoinOption.OFFSET_LIST, offsets);
+        joinOptions.put(JoinOption.LAST_NCHANGES, 1);
 
         channelService.joinChannel(channelRef, joinOptions, new ChannelJoinResponseHandler() {
             @Override
@@ -238,23 +236,12 @@ public class BeagleBone implements NucleusClientListener
             }
 
             @Override
-            public void onSuccess(final String channelRef, List<TopicOffset> offsets) {
-                channelService.switchChannel(channelRef, new GeneralResponseHandler() {
-                    @Override
-                    public void onSuccess() {
-                        Channel channel = nucleusClient.getChannel(channelRef);
-                        System.out.println("Successfully joined channel " + channel.getName() + ". channelRef=" + channelRef);
-                        // Now that we have our channel created, we want to enable polling on it so that we
-                        // can respond to any chat messages to display on our OLED
-                        sendLoop();
-                    }
-
-                    @Override
-                    public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                        Logger.error("Failed to create channel. " + operationStatus + ", statusCode = " +
-                                    statusCode + ", errorMessage = " + errorMessage);
-                    }
-                });
+            public void onSuccess(final String channelRef) {
+                Channel channel = nucleusClient.getChannel(channelRef);
+                System.out.println("Successfully joined channel " + channel.getName() + ". channelRef=" + channelRef);
+                // Now that we have our channel created, we want to enable polling on it so that we
+                // can respond to any chat messages to display on our OLED
+                sendLoop();
             }
         });
     }
@@ -265,11 +252,6 @@ public class BeagleBone implements NucleusClientListener
             Channel channel = nucleusClient.getCurrentChannel();
             System.out.println("Console Device ID: " + Driver.nucleusClient.getClientDevice().getDeviceID());
             System.out.println("There are currently " + channel.getMembersCount() + " members in this channel.\n");
-
-            List<TopicType> pollTypes = new ArrayList<>();
-            pollTypes.add(TopicType.EChannelMessage);
-            pollTypes.add(TopicType.EProperty);
-            channel.setPollTopics(pollTypes);
 
             nucleusClient.enablePolling(true);
 
@@ -324,7 +306,7 @@ public class BeagleBone implements NucleusClientListener
             public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
                 String msg = "Failed to start device session. " + operationStatus + ", statusCode = " +
                             statusCode + ", errorMessage = " + errorMessage;
-                writeMessage("FAILED!");
+                writeMessage("!! RETRYING !!");
                 Logger.error(msg);
                 System.out.println(msg);
             }
@@ -492,20 +474,20 @@ public class BeagleBone implements NucleusClientListener
             String message = property.getValue();
             writeMessage(message);
         }
-        else if ( property.getName().equals("shutdown") ) {
+        else if ( property.getName().equals("shutdown") && ! property.getValue().equals("-1") ) {
             // Make sure to reset the shutdown property
             Channel channel = nucleusClient.getChannel(channelRef);
             channel.setProperty("shutdown", "-1", new GeneralResponseHandler() {
                 @Override
                 public void onSuccess() {
                     String valueStr = property.getValue();
-                    try {
-                        shutdown(valueStr);
-                    }
-                    catch (IOException e) {
-                        e.printStackTrace();
-                        Logger.error("Failed to shutdown device!");
-                    }
+//                    try {
+//                        shutdown(valueStr);
+//                    }
+//                    catch (IOException e) {
+//                        e.printStackTrace();
+//                        Logger.error("Failed to shutdown device!");
+//                    }
                 }
 
                 @Override
@@ -555,13 +537,14 @@ public class BeagleBone implements NucleusClientListener
     }
 
     @Override
-    public void onMessageChange(ChannelMessage channelMessage) {
+    public void onMessageChange(String channelRef, ChannelMessage channelMessage) {
         // This is hackbot response. Make sure we dont reply to our own messages!
         if ( ! channelMessage.getSenderID().equals(nucleusClient.getClientDevice().getDeviceID()) ) {
             double temp = (sensorData != null ? sensorData.temperature : -1);
             double hum = (sensorData != null ? sensorData.humidity : -1);
 
-            Channel channel = nucleusClient.getCurrentChannel();
+            Channel channel = nucleusClient.getChannel(channelRef);
+
             Member member = channel.getMember(channelMessage.getSenderID());
 
             MimeMessage mimeMessage = channelMessage.getMimeMessage();
@@ -569,6 +552,8 @@ public class BeagleBone implements NucleusClientListener
             MimePart part = parts.get(0);
 
             String message = (new String(part.getContent())).toLowerCase();
+            System.out.println(">>> MESSAGE: " + message);
+
             if ( message.contains("help") ) {
                 sendResponse("Hi " + member.getScreenName() +
                                      ". You can ask me: how are you? what is the temperature? what " +
@@ -639,6 +624,8 @@ public class BeagleBone implements NucleusClientListener
     private void sendResponse(String response) {
         String channelRef = nucleusClient.getCurrentChannelRef();
         ChannelService channelService = nucleusClient.getChannelService();
+
+        System.out.println("<<< RESPONSE: " + response);
 
         List<MimePart> mimeParts = new ArrayList<>();
         mimeParts.add(new MimePart("text/plain", "", response.getBytes()));

@@ -34,6 +34,8 @@ import com.spacetimeinsight.nucleuslib.responsehandlers.PartitionCreateResponseH
 import com.spacetimeinsight.nucleuslib.responsehandlers.PartitionLookupByNameResponseHandler;
 import com.spacetimeinsight.nucleuslib.types.OperationStatus;
 
+import java.io.IOException;
+
 public class CreatePartitionActivity extends AppCompatActivity {
     private static final String LOG_TAG = CreatePartitionActivity.class.getName();
 
@@ -121,14 +123,13 @@ public class CreatePartitionActivity extends AppCompatActivity {
         SharedPreferencesHelper helper = new SharedPreferencesHelper(CreatePartitionActivity.this);
         helper.putAPIKey(apiKey);
         helper.putAPIToken(apiToken);
-        nucleusService.setActivePartition(apiKey, apiToken);
-
-        finish();
 
         try {
+            nucleusService.setActivePartition(apiKey, apiToken);
+            finish();
             app.startSession();
         }
-        catch ( NucleusException e ) {
+        catch ( NucleusException | IOException e ) {
             e.printStackTrace();
             Log.e(LOG_TAG, e.getLocalizedMessage(), e);
             nucleusService.handleOnError(0, "Internal exception - " +

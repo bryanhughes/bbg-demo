@@ -101,7 +101,8 @@ public class Console implements NucleusClientListener {
         ClientDevice device = NucleusFactory.clientDevice(deviceID, DeviceType.discoverMatchingEnum(Driver.deviceType),
                                                           Driver.manufacturer, Driver.modelIdentifier, Driver.serialNumber,
                                                           Driver.osVersion, Driver.os);
-        Driver.nucleusClient = new NucleusClient(device, Driver.apiAccountID, Driver.apiAccountToken);
+        Driver.nucleusClient = new NucleusClient(device, Driver.apiAccountID, Driver.apiAccountToken,
+                                                 System.getProperty("user.dir"));
         Driver.nucleusClient.setServerTarget("http", Driver.SERVER_URL, Driver.SERVER_PORT);
         Driver.nucleusClient.setActivePartition(Driver.apiKey, Driver.apiToken);
         Driver.nucleusClient.addListener(this);
@@ -348,21 +349,10 @@ public class Console implements NucleusClientListener {
             }
 
             @Override
-            public void onSuccess(final String channelRef, List<TopicOffset> offsets) {
+            public void onSuccess(final String channelRef) {
                 Channel channel = nucleusClient.getChannel(channelRef);
                 System.out.println("Successfully joined channel " + channel.getName() + ". channelRef=" + channelRef);
-                channelService.switchChannel(channelRef, new GeneralResponseHandler() {
-                    @Override
-                    public void onSuccess() {
-                        scanLoop(channelRef);
-                    }
-
-                    @Override
-                    public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                        LOGGER.severe("Failed to create channel. " + operationStatus + ", statusCode = " +
-                                            statusCode + ", errorMessage = " + errorMessage);
-                    }
-                });
+                scanLoop(channelRef);
             }
         });
     }
@@ -453,7 +443,7 @@ public class Console implements NucleusClientListener {
     }
 
     @Override
-    public void onMessageChange(ChannelMessage channelMessage) {
+    public void onMessageChange(String channelRef, ChannelMessage channelMessage) {
 
     }
 

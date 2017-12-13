@@ -30,6 +30,7 @@ import com.spacetimeinsight.nucleuslib.NucleusException;
 import com.spacetimeinsight.nucleuslib.responsehandlers.GeneralResponseHandler;
 import com.spacetimeinsight.nucleuslib.types.OperationStatus;
 
+import java.io.IOException;
 import java.util.Locale;
 import java.util.Objects;
 
@@ -120,27 +121,29 @@ public class MainActivity extends Activity {
             // The NucleusService should be bound to at this point...
             NucleusService nucleusService = BBGDemoApplication.getNucleusService();
             if ( nucleusService != null ) {
+                SharedPreferencesHelper helper = new SharedPreferencesHelper(getApplicationContext());
+                final String apiKey = helper.getAPIKey();
+                final String apiToken = helper.getAPIToken();
+
                 try {
-                    SharedPreferencesHelper helper = new SharedPreferencesHelper(getApplicationContext());
-                    final String apiKey = helper.getAPIKey();
-                    final String apiToken = helper.getAPIToken();
+                    nucleusService.setActivePartition(apiKey, apiToken);
 
                     // If we have an empty apiKey, then we need to create or find and join a partition. Otherwise,
                     // just start our session
+                    Intent i;
                     if ( apiKey.isEmpty() ) {
-                        Intent i = new Intent(getApplicationContext(), CreatePartitionActivity.class);
+                        i = new Intent(getApplicationContext(), CreatePartitionActivity.class);
                         i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
                         startActivity(i);
                     }
                     else {
-                        nucleusService.setActivePartition(apiKey, apiToken);
                         app.startSession();
                     }
                 }
-                catch ( NucleusException e ) {
+                catch (IOException | NucleusException e) {
                     e.printStackTrace();
-                    Log.e(LOG_TAG, e.getLocalizedMessage(), e);
-                    nucleusService.handleOnError(0, "Internal exception - " + e.getLocalizedMessage());
+                    Log.e(LOG_TAG, "Failed to start session. " + e.getLocalizedMessage(), e);
+                    app.showAlert("Error", "Failed to start session.");
                 }
             }
             else {
@@ -245,7 +248,6 @@ public class MainActivity extends Activity {
 
         BottomNavigationView navigation = (BottomNavigationView) findViewById(R.id.navigation);
         navigation.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
-
 
         checkPermission();
     }

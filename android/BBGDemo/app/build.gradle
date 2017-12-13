@@ -45,7 +45,7 @@ dependencies {
     compile 'com.google.android.gms:play-services-base:11.6.0'
     compile 'com.google.android.gms:play-services-maps:11.6.0'
     compile fileTree(include: ['*.jar'], dir: 'libs')
-    compile(name: 'nucleus-android-sdk', version: '2.0.8-debug', ext: 'aar')
+    compile(name: 'nucleus-android-sdk', version: '2.0.9-debug', ext: 'aar')
     compile 'com.google.android.gms:play-services-location:11.6.0'
     androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
         exclude group: 'com.android.support', module: 'support-annotations'

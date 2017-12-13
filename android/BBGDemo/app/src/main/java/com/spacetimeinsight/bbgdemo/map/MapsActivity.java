@@ -30,10 +30,10 @@ import com.spacetimeinsight.bbgdemo.BBGDemoApplication;
 import com.spacetimeinsight.bbgdemo.R;
 import com.spacetimeinsight.nucleus.android.NucleusService;
 import com.spacetimeinsight.nucleuslib.Channel;
-import com.spacetimeinsight.nucleuslib.Datapoint;
-import com.spacetimeinsight.nucleuslib.Member;
 import com.spacetimeinsight.nucleuslib.NucleusClientListener;
 import com.spacetimeinsight.nucleuslib.datamapped.ChannelMessage;
+import com.spacetimeinsight.nucleuslib.datamapped.Datapoint;
+import com.spacetimeinsight.nucleuslib.datamapped.Member;
 import com.spacetimeinsight.nucleuslib.datamapped.NucleusLocation;
 import com.spacetimeinsight.nucleuslib.datamapped.Property;
 import com.spacetimeinsight.nucleuslib.types.ChangeType;
@@ -257,7 +257,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     @Override
-    public void onMessageChange(ChannelMessage channelMessage) {
+    public void onMessageChange(String channelRef, ChannelMessage channelMessage) {
         // Ignore. Let the main listener handle it.
     }
 

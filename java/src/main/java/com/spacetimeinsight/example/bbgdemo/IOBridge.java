@@ -93,15 +93,20 @@ interface IOBridge {
         GPSData() {
             String gpsDataStr = readFile(GPS_FILENAME);
             LOGGER.info("gps data = " + gpsDataStr);
-            if ( gpsDataStr != null ) {
+            if ( (gpsDataStr != null) && ! gpsDataStr.isEmpty() ) {
                 String[] parts = gpsDataStr.split(",");
                 if ( parts.length == 6 ) {
-                    this.timestamp = Double.parseDouble(parts[0]);
-                    this.lat = Double.parseDouble(parts[1]);
-                    this.lng = Double.parseDouble(parts[2]);
-                    this.fix = Integer.parseInt(parts[3]);
-                    this.nsats = Integer.parseInt(parts[4]);
-                    this.alt = Double.parseDouble(parts[5]);
+                    try {
+                        this.timestamp = Double.parseDouble(parts[0]);
+                        this.lat = Double.parseDouble(parts[1]);
+                        this.lng = Double.parseDouble(parts[2]);
+                        this.fix = Integer.parseInt(parts[3]);
+                        this.nsats = Integer.parseInt(parts[4]);
+                        this.alt = Double.parseDouble(parts[5]);
+                    }
+                    catch (NumberFormatException e) {
+                        e.printStackTrace();
+                    }
                 }
             }
         }

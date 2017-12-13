@@ -23,19 +23,20 @@ import com.spacetimeinsight.bbgdemo.chat.ChatArrayAdapter;
 import com.spacetimeinsight.nucleus.android.NucleusService;
 import com.spacetimeinsight.nucleuslib.Channel;
 import com.spacetimeinsight.nucleuslib.ChannelService;
-import com.spacetimeinsight.nucleuslib.Datapoint;
-import com.spacetimeinsight.nucleuslib.Member;
+import com.spacetimeinsight.nucleuslib.GeoCircle;
 import com.spacetimeinsight.nucleuslib.NucleusClientListener;
 import com.spacetimeinsight.nucleuslib.NucleusException;
 import com.spacetimeinsight.nucleuslib.PartitionInfo;
 import com.spacetimeinsight.nucleuslib.PartitionService;
 import com.spacetimeinsight.nucleuslib.core.ClientDevice;
 import com.spacetimeinsight.nucleuslib.datamapped.ChannelMessage;
+import com.spacetimeinsight.nucleuslib.datamapped.Datapoint;
 import com.spacetimeinsight.nucleuslib.datamapped.EnvData;
-import com.spacetimeinsight.nucleuslib.datamapped.GeoCircle;
+import com.spacetimeinsight.nucleuslib.datamapped.Member;
+import com.spacetimeinsight.nucleuslib.datamapped.MimeMessage;
+import com.spacetimeinsight.nucleuslib.datamapped.MimePart;
 import com.spacetimeinsight.nucleuslib.datamapped.NucleusLocation;
 import com.spacetimeinsight.nucleuslib.datamapped.Property;
-import com.spacetimeinsight.nucleuslib.datamapped.TopicOffset;
 import com.spacetimeinsight.nucleuslib.responsehandlers.ChannelCreateResponseHandler;
 import com.spacetimeinsight.nucleuslib.responsehandlers.ChannelFindByNameResponseHandler;
 import com.spacetimeinsight.nucleuslib.responsehandlers.ChannelJoinResponseHandler;
@@ -204,6 +205,7 @@ public class BBGDemoApplication extends Application implements NucleusClientList
             if ( needsProfile && (currentActivity != null) ) {
                 Context context = getApplicationContext();
                 Intent intent = new Intent(context, ProfileActivity.class);
+                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 startActivity(intent);
             }
 
@@ -353,11 +355,8 @@ public class BBGDemoApplication extends Application implements NucleusClientList
         final ChannelService channelService = nucleusService.getChannelService();
 
         Map<JoinOption, Object> joinOptions = new HashMap<>();
-        List<TopicOffset> offsets = new ArrayList<>();
-        offsets.add(new TopicOffset(channelRef, TopicType.EChannelMessage, -1, 1));
-        offsets.add(new TopicOffset(channelRef, TopicType.EProperty, -1, 1));
-        offsets.add(new TopicOffset(channelRef, TopicType.EDatapoint, -1, 1));
-        joinOptions.put(JoinOption.OFFSET_LIST, offsets);
+        joinOptions.put(JoinOption.LAST_NCHANGES, 1);
+        joinOptions.put(JoinOption.INCLUDE_TELEMETRY, true);
 
         final long stime = System.currentTimeMillis();
         channelService.joinChannel(channelRef, joinOptions, new ChannelJoinResponseHandler() {
@@ -366,40 +365,25 @@ public class BBGDemoApplication extends Application implements NucleusClientList
                 Log.e(LOG_TAG, "Failed to join channel. channelRef=" + channelRef +
                                            " : " + operationStatus + " : statusCode = " +
                                            statusCode + " : errorMessage = " + errorMessage);
-                System.exit(-1);
             }
 
             @Override
-            public void onSuccess(final String channelRef, List<TopicOffset> offsets) {
+            public void onSuccess(final String channelRef) {
                 Log.i(LOG_TAG, "Took " + (System.currentTimeMillis() - stime) + "ms to join channel " + channelRef);
 
-                channelService.switchChannel(channelRef, new GeneralResponseHandler() {
-                    @Override
-                    public void onSuccess() {
-                        // Now that we have our channel created, we want to enable polling on it so that we
-                        // can respond to any chat messages to display on our OLED
-                        startPolling();
-                    }
+                // Make sure we set our initial state!
 
-                    @Override
-                    public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                        Log.e(LOG_TAG, "Failed to create channel. " + operationStatus + ", statusCode = " +
-                                                   statusCode + ", errorMessage = " + errorMessage);
-                        System.exit(-1);
-                    }
-                });
+                Channel channel = nucleusService.getChannel(channelRef);
+                Property property = channel.getProperty("led");
+                if ( property != null ) {
+                    onPropertyChange(channelRef, property);
+                }
+                startPolling();
             }
         });
     }
 
     void startPolling() {
-        Channel channel = nucleusService.getCurrentChannel();
-        List<TopicType> pollTypes = new ArrayList<>();
-        pollTypes.add(TopicType.EChannelMessage);
-        pollTypes.add(TopicType.EProperty);
-        pollTypes.add(TopicType.EDatapoint);
-        channel.setPollTopics(pollTypes);
-
         nucleusService.enablePolling(true);
     }
 
@@ -536,6 +520,10 @@ public class BBGDemoApplication extends Application implements NucleusClientList
                         throwable.getLocalizedMessage())
                 .create();
         alertDialog.show();
+
+        throwable.printStackTrace();
+
+        Log.e(LOG_TAG, throwable.getLocalizedMessage(), throwable);
     }
 
     @Override
@@ -620,13 +608,17 @@ public class BBGDemoApplication extends Application implements NucleusClientList
     }
 
     @Override
-    public void onMessageChange(ChannelMessage message) {
+    public void onMessageChange(String channelRef, ChannelMessage message) {
         Date date = new Date(message.getTimestamp() * 1000);
         @SuppressLint("SimpleDateFormat") DateFormat format = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
         format.setTimeZone(TimeZone.getTimeZone("Etc/UTC"));
         String formatted = format.format(date);
 
-        Log.i(LOG_TAG, "onMessageChange. message=" + message + " eventID: " + message.getEventID() + " Protoname: " +
+        MimeMessage mimeMessage = message.getMimeMessage();
+        List<MimePart> parts = mimeMessage.getMimeParts();
+        MimePart part = parts.get(0);
+        String msg = new String(part.getContent());
+        Log.i(LOG_TAG, "onMessageChange. message=" + msg + " eventID: " + message.getEventID() + " Protoname: " +
                 message .getProtoName() + " Timestamp:" + formatted);
 
         Channel channel = nucleusService.getCurrentChannel();
