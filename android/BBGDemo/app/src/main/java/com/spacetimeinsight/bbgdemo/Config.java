@@ -19,8 +19,8 @@ package com.spacetimeinsight.bbgdemo;
 
 class Config {
     static String PROTOCOL = "http";
-    static String HOSTNAME = "nucleus.demo2.go-factory.com";
+    static String HOSTNAME = "demo2.b.go-factory.com";
     static int PORT = 80;
-    static String API_ACCOUNTID = "a7414c322_b79c_366a_b7fc_6995a6b91e1b";
-    static String API_ACCOUNTTOKEN = "WitvnVbTE78gdymXoU5gcqMyLacR0Jj/n4MWxMGPehF7+tejtzPvZCSU20UPfS2QKs0UPvPWsDFN";
+    static String API_ACCOUNTID = "7414c322-b79c-366a-b7fc-6995a6b91e1b";
+    static String API_ACCOUNTTOKEN = "DIstshibyXZ7ZwIp1eldTaFP3cJihm9d7rkh4TdbUTqR7kg/Lnfay3x6q3kDk5lPCSMZ5GIg6bs=";
 }

@@ -10,7 +10,6 @@ import android.widget.EditText;
 import com.spacetimeinsight.nucleus.android.NucleusService;
 import com.spacetimeinsight.nucleuslib.Channel;
 import com.spacetimeinsight.nucleuslib.ChannelService;
-import com.spacetimeinsight.nucleuslib.NucleusException;
 import com.spacetimeinsight.nucleuslib.responsehandlers.ChannelFindByNameResponseHandler;
 import com.spacetimeinsight.nucleuslib.types.OperationStatus;
 
@@ -51,12 +50,7 @@ public class ChannelActivity extends AppCompatActivity {
                         }
                         else {
                             Log.i(LOG_TAG, "Found channel by name. channelRef = " + channelRef);
-                            try {
-                                app.joinChannel(channelRef);
-                            } catch ( NucleusException e ) {
-                                Log.i(LOG_TAG, "Failed to join channel. channelRef = " + channelRef);
-                                e.printStackTrace();
-                            }
+                            app.joinChannel(channelRef);
                         }
                     }
                 });

@@ -6,23 +6,17 @@ import com.spacetimeinsight.nucleuslib.core.ClientDevice;
 import com.spacetimeinsight.nucleuslib.core.NucleusFactory;
 import com.spacetimeinsight.nucleuslib.datamapped.*;
 import com.spacetimeinsight.nucleuslib.responsehandlers.*;
-import com.spacetimeinsight.nucleuslib.types.ChangeType;
-import com.spacetimeinsight.nucleuslib.types.DeviceType;
-import com.spacetimeinsight.nucleuslib.types.HealthType;
-import com.spacetimeinsight.nucleuslib.types.OperationStatus;
+import com.spacetimeinsight.nucleuslib.types.*;
 
 import java.io.*;
-import java.util.Base64;
+import java.util.*;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Scanner;
-import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.*;
 
 import static com.spacetimeinsight.example.bbgdemo.Driver.nucleusClient;
+import static java.lang.System.exit;
 
 public class Console implements NucleusClientListener {
     private static final String LOG_TAG = Console.class.getName();
@@ -90,7 +84,7 @@ public class Console implements NucleusClientListener {
                 (serialNo == null ? UUID.randomUUID().toString() : Driver.serialNumber);
 
         // Sadly, there is a bug in nucleus right now so all dashes need to be underbars
-        String deviceID = UUID.nameUUIDFromBytes(namespace.getBytes()).toString().replaceAll("-", "_");
+        String deviceID = UUID.nameUUIDFromBytes(namespace.getBytes()).toString();
 
         LOGGER.info("Using the following properties:" +
                             "\n  Device ID:     " + deviceID +
@@ -201,12 +195,7 @@ public class Console implements NucleusClientListener {
                     createChannel(channelName);
                 }
                 else {
-                    try {
-                        joinChannel(channelRef);
-                    } catch ( NucleusException e ) {
-                        LOGGER.severe("Failed to join channel. channelRef = " + channelRef);
-                        e.printStackTrace();
-                    }
+                    joinChannel(channelRef);
                 }
             }
         });
@@ -337,25 +326,42 @@ public class Console implements NucleusClientListener {
         }
     }
 
-    private void joinChannel(final String channelRef) throws NucleusException {
-        final ChannelService channelService = Driver.nucleusClient.getChannelService();
-        channelService.joinChannel(channelRef, new ChannelJoinResponseHandler() {
+    private void joinChannel(final String channelRef) {
+        final ChannelService channelService = nucleusClient.getChannelService();
+
+        Map<JoinOption, Object> joinOptions = new HashMap<>();
+        joinOptions.put(JoinOption.LAST_NCHANGES, 1);
+
+        channelService.joinChannel(channelRef, joinOptions, new ChannelJoinResponseHandler() {
             @Override
             public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                LOGGER.severe("Failed to join channel. channelRef=" + channelRef +
-                                    ", " + operationStatus + ", statusCode = " +
-                                    statusCode + ", errorMessage = " + errorMessage);
-                System.exit(-1);
+                org.pmw.tinylog.Logger.error("Failed to join channel. channelRef=" + channelRef +
+                                                     " : " + operationStatus + " : statusCode = " +
+                                                     statusCode + " : errorMessage = " + errorMessage);
+                exit(-1);
             }
 
             @Override
             public void onSuccess(final String channelRef) {
-                Channel channel = nucleusClient.getChannel(channelRef);
-                System.out.println("Successfully joined channel " + channel.getName() + ". channelRef=" + channelRef);
-                scanLoop(channelRef);
+                channelService.switchChannel(channelRef, new GeneralResponseHandler() {
+                    @Override
+                    public void onSuccess() {
+                        Channel channel = nucleusClient.getChannel(channelRef);
+                        System.out.println("Successfully joined channel " + channel.getName() + ". channelRef=" + channelRef);
+                        scanLoop(channelRef);
+                    }
+
+                    @Override
+                    public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
+                        org.pmw.tinylog.Logger.error("Failed to create channel. " + operationStatus + ", statusCode = " +
+                                                             statusCode + ", errorMessage = " + errorMessage);
+                        exit(-1);
+                    }
+                });
             }
         });
     }
+
 
     @Override
     public void handleUnsupportedVersion(String s) {

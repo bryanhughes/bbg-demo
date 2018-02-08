@@ -167,19 +167,25 @@ public class MainActivity extends Activity {
         public void onStopTrackingTouch(SeekBar seekBar) {
             final NucleusService nucleusService = BBGDemoApplication.getNucleusService();
             Channel channel = nucleusService.getCurrentChannel();
-            final String ledStr = getLEDString();
-            channel.setProperty("led", ledStr, new GeneralResponseHandler() {
-                @Override
-                public void onSuccess() {
-                    Log.i(LOG_TAG, "Successfully set channel property - " + ledStr);
-                }
+            if ( channel == null ) {
+                BBGDemoApplication app = (BBGDemoApplication) getApplication();
+                app.showAlert("Error", "You must first either create a new channel, or join an existing one.");
+            }
+            else {
+                final String ledStr = getLEDString();
+                channel.setProperty("led", ledStr, new GeneralResponseHandler() {
+                    @Override
+                    public void onSuccess() {
+                        Log.i(LOG_TAG, "Successfully set channel property - " + ledStr);
+                    }
 
-                @Override
-                public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg) {
-                    Log.e(LOG_TAG, "Failed to set channel property - " + ledStr + ". " + operationStatus + " (" +
-                            statusCode + ") - " + errorMsg);
-                }
-            });
+                    @Override
+                    public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg) {
+                        Log.e(LOG_TAG, "Failed to set channel property - " + ledStr + ". " + operationStatus + " (" +
+                                statusCode + ") - " + errorMsg);
+                    }
+                });
+            }
         }
     };
 
@@ -209,18 +215,24 @@ public class MainActivity extends Activity {
                 final String message = messageText.getText().toString();
 
                 Channel channel = nucleusService.getCurrentChannel();
-                channel.setProperty("display", message, new GeneralResponseHandler() {
-                    @Override
-                    public void onSuccess() {
-                        Log.i(LOG_TAG, "Successfully set channel property - " + message);
-                    }
+                if ( channel == null ) {
+                    BBGDemoApplication app = (BBGDemoApplication) getApplication();
+                    app.showAlert("Error", "You must first either create a new channel, or join an existing one.");
+                }
+                else {
+                    channel.setProperty("display", message, new GeneralResponseHandler() {
+                        @Override
+                        public void onSuccess() {
+                            Log.i(LOG_TAG, "Successfully set channel property - " + message);
+                        }
 
-                    @Override
-                    public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg) {
-                        Log.e(LOG_TAG, "Failed to set channel property - " + message + ". " + operationStatus + " (" +
-                                statusCode + ") - " + errorMsg);
-                    }
-                });
+                        @Override
+                        public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg) {
+                            Log.e(LOG_TAG, "Failed to set channel property - " + message + ". " + operationStatus + " (" +
+                                    statusCode + ") - " + errorMsg);
+                        }
+                    });
+                }
             }
         });
 
@@ -230,19 +242,24 @@ public class MainActivity extends Activity {
             public void onClick(View v) {
                 NucleusService nucleusService = BBGDemoApplication.getNucleusService();
                 Channel channel = nucleusService.getCurrentChannel();
+                if ( channel == null ) {
+                    BBGDemoApplication app = (BBGDemoApplication) getApplication();
+                    app.showAlert("Error", "You must first either create a new channel, or join an existing one.");
+                }
+                else {
+                    channel.setProperty("shutdown", "now", new GeneralResponseHandler() {
+                        @Override
+                        public void onSuccess() {
+                            BBGDemoApplication.showToast(getApplicationContext(), "Device will now shutdown");
+                        }
 
-                channel.setProperty("shutdown", "now", new GeneralResponseHandler() {
-                    @Override
-                    public void onSuccess() {
-                        BBGDemoApplication.showToast(getApplicationContext(), "Device will now shutdown");
-                    }
-
-                    @Override
-                    public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg) {
-                        Log.e(LOG_TAG, "Failed to set shutdown property. " + operationStatus + " : (" + statusCode + ") - " +
-                                errorMsg);
-                    }
-                });
+                        @Override
+                        public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg) {
+                            Log.e(LOG_TAG, "Failed to set shutdown property. " + operationStatus + " : (" + statusCode + ") - " +
+                                    errorMsg);
+                        }
+                    });
+                }
             }
         });
 

@@ -24,7 +24,6 @@ import com.spacetimeinsight.nucleuslib.core.NucleusFactory;
 import com.spacetimeinsight.nucleuslib.datamapped.*;
 import com.spacetimeinsight.nucleuslib.responsehandlers.*;
 import com.spacetimeinsight.nucleuslib.types.*;
-import com.spacetimeinsight.protobuf.nano.EnvDataProto;
 import org.pmw.tinylog.Logger;
 
 import java.io.*;
@@ -118,7 +117,7 @@ public class BeagleBone implements NucleusClientListener
         String namespace = "com." + manufacturer + "." + (serialNumber == null ? UUID.randomUUID().toString() : serialNumber);
 
         // Sadly, there is a bug in nucleus right now so all dashes need to be underbars
-        String deviceID = UUID.nameUUIDFromBytes(namespace.getBytes()).toString().replaceAll("-", "_");
+        String deviceID = UUID.nameUUIDFromBytes(namespace.getBytes()).toString();
 
         String msg = "Using the following values:\n  DeviceID:      " + deviceID +
                                                 "\n  Screen Name:   " + screenName +
@@ -171,12 +170,7 @@ public class BeagleBone implements NucleusClientListener
                 }
                 else {
                     Logger.info("Found channel by name " + channelName + " - Joining channel " + channelRef);
-                    try {
-                        joinChannel(channelRef);
-                    } catch ( NucleusException e ) {
-                        Logger.error("Failed to join channel. channelRef = " + channelRef);
-                        e.printStackTrace();
-                    }
+                    joinChannel(channelRef);
                 }
             }
         });
@@ -190,25 +184,9 @@ public class BeagleBone implements NucleusClientListener
                                      null, shortDescription, longDescription, new ChannelCreateResponseHandler() {
                     @Override
                     public void onSuccess(String channelRef) {
-                        // Creating a channel automatically joins you to it, but does not automatically switch
-                        // you into it.
+                        // Creating a channel does NOT automatically join you to it.
                         Logger.info("Successfully created channel. channelRef = " + channelRef);
-                        channelService.switchChannel(channelRef, new GeneralResponseHandler() {
-                            @Override
-                            public void onSuccess() {
-                                // Now that we have our channel created, we want to enable polling on it so that we
-                                // can respond to any chat messages to display on our OLED
-                                nucleusClient.enablePolling(true);
-                                sendLoop();
-                            }
-
-                            @Override
-                            public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                                Logger.error("Failed to create channel. " + operationStatus + ", statusCode = " +
-                                            statusCode + ", errorMessage = " + errorMessage);
-                                exit(-1);
-                            }
-                        });
+                        joinChannel(channelRef);
                     }
 
                     @Override
@@ -220,7 +198,7 @@ public class BeagleBone implements NucleusClientListener
                 });
     }
 
-    private void joinChannel(final String channelRef) throws NucleusException {
+    private void joinChannel(final String channelRef) {
         final ChannelService channelService = nucleusClient.getChannelService();
 
         Map<JoinOption, Object> joinOptions = new HashMap<>();
@@ -237,11 +215,24 @@ public class BeagleBone implements NucleusClientListener
 
             @Override
             public void onSuccess(final String channelRef) {
-                Channel channel = nucleusClient.getChannel(channelRef);
-                System.out.println("Successfully joined channel " + channel.getName() + ". channelRef=" + channelRef);
-                // Now that we have our channel created, we want to enable polling on it so that we
-                // can respond to any chat messages to display on our OLED
-                sendLoop();
+                channelService.switchChannel(channelRef, new GeneralResponseHandler() {
+                    @Override
+                    public void onSuccess() {
+                        Channel channel = nucleusClient.getChannel(channelRef);
+                        System.out.println("Successfully joined channel " + channel.getName() + ". channelRef=" + channelRef);
+                        // Now that we have our channel created, we want to enable polling on it so that we
+                        // can respond to any chat messages to display on our OLED
+                        nucleusClient.enablePolling(true);
+                        sendLoop();
+                    }
+
+                    @Override
+                    public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
+                        Logger.error("Failed to create channel. " + operationStatus + ", statusCode = " +
+                                             statusCode + ", errorMessage = " + errorMessage);
+                        exit(-1);
+                    }
+                });
             }
         });
     }
@@ -324,10 +315,9 @@ public class BeagleBone implements NucleusClientListener
             NucleusLocation loc = getLocation(gpsData);
             EnvData envData = new EnvData(sensorData.timestamp, sensorData.temperature, 0, sensorData.humidity, 0);
 
-            EnvDataProto.EnvData envDataProto = envData.toProtoBuffer();
             DeviceService deviceService = nucleusClient.getDeviceService();
             Datapoint datapoint = deviceService.newDatapoint(100, loc, "sample", 0, HealthType.NORMAL,
-                                                             "EnvData", EnvDataProto.EnvData.toByteArray(envDataProto));
+                                                            envData, TelemetryType.ENV_DATA);
             System.out.println("<<< SENDING : " + envData + ", loc=" + loc);
             deviceService.setDatapoint(datapoint, new DeviceSetDatapointResponseHandler() {
                 @Override
@@ -481,13 +471,13 @@ public class BeagleBone implements NucleusClientListener
                 @Override
                 public void onSuccess() {
                     String valueStr = property.getValue();
-//                    try {
-//                        shutdown(valueStr);
-//                    }
-//                    catch (IOException e) {
-//                        e.printStackTrace();
-//                        Logger.error("Failed to shutdown device!");
-//                    }
+                    try {
+                        shutdown(valueStr);
+                    }
+                    catch (IOException e) {
+                        e.printStackTrace();
+                        Logger.error("Failed to shutdown device!");
+                    }
                 }
 
                 @Override

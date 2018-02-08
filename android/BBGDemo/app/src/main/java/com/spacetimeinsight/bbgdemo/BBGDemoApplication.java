@@ -17,7 +17,6 @@ import android.support.v7.app.AlertDialog;
 import android.util.Log;
 import android.widget.Toast;
 
-import com.google.protobuf.nano.InvalidProtocolBufferNanoException;
 import com.spacetimeinsight.bbgdemo.chat.ChatActivity;
 import com.spacetimeinsight.bbgdemo.chat.ChatArrayAdapter;
 import com.spacetimeinsight.nucleus.android.NucleusService;
@@ -47,13 +46,11 @@ import com.spacetimeinsight.nucleuslib.types.ChangeType;
 import com.spacetimeinsight.nucleuslib.types.HealthType;
 import com.spacetimeinsight.nucleuslib.types.JoinOption;
 import com.spacetimeinsight.nucleuslib.types.OperationStatus;
-import com.spacetimeinsight.nucleuslib.types.TopicType;
-import com.spacetimeinsight.protobuf.nano.EnvDataProto;
+import com.spacetimeinsight.nucleuslib.types.TelemetryType;
 
 import java.net.URL;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -305,12 +302,7 @@ public class BBGDemoApplication extends Application implements NucleusClientList
                     createChannel();
                 }
                 else {
-                    try {
-                        joinChannel(channelRef);
-                    } catch ( NucleusException e ) {
-                        Log.i(LOG_TAG, "Failed to join channel. channelRef = " + channelRef);
-                        e.printStackTrace();
-                    }
+                    joinChannel(channelRef);
                 }
             }
         });
@@ -325,21 +317,7 @@ public class BBGDemoApplication extends Application implements NucleusClientList
                         // Creating a channel automatically joins you to it, but does not automatically switch
                         // you into it.
                         Log.i(LOG_TAG, "Successfully created channel. channelRef = " + channelRef);
-                        channelService.switchChannel(channelRef, new GeneralResponseHandler() {
-                            @Override
-                            public void onSuccess() {
-                                // Now that we have our channel created, we want to enable polling on it so that we
-                                // can respond to any chat messages to display on our OLED
-                                startPolling();
-                            }
-
-                            @Override
-                            public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                                Log.e(LOG_TAG, "Failed to create channel. " + operationStatus + ", statusCode = " +
-                                                           statusCode + ", errorMessage = " + errorMessage);
-                                System.exit(-1);
-                            }
-                        });
+                        joinChannel(channelRef);
                     }
 
                     @Override
@@ -351,7 +329,7 @@ public class BBGDemoApplication extends Application implements NucleusClientList
                 });
     }
 
-    void joinChannel(final String channelRef) throws NucleusException {
+    void joinChannel(final String channelRef) {
         final ChannelService channelService = nucleusService.getChannelService();
 
         Map<JoinOption, Object> joinOptions = new HashMap<>();
@@ -369,16 +347,28 @@ public class BBGDemoApplication extends Application implements NucleusClientList
 
             @Override
             public void onSuccess(final String channelRef) {
-                Log.i(LOG_TAG, "Took " + (System.currentTimeMillis() - stime) + "ms to join channel " + channelRef);
+                channelService.switchChannel(channelRef, new GeneralResponseHandler() {
+                    @Override
+                    public void onSuccess() {
+                        Log.i(LOG_TAG, "Took " + (System.currentTimeMillis() - stime) + "ms to join channel " + channelRef);
 
-                // Make sure we set our initial state!
+                        // Make sure we set our initial state!
 
-                Channel channel = nucleusService.getChannel(channelRef);
-                Property property = channel.getProperty("led");
-                if ( property != null ) {
-                    onPropertyChange(channelRef, property);
-                }
-                startPolling();
+                        Channel channel = nucleusService.getChannel(channelRef);
+                        Property property = channel.getProperty("led");
+                        if ( property != null ) {
+                            onPropertyChange(channelRef, property);
+                        }
+                        startPolling();
+                    }
+
+                    @Override
+                    public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
+                        Log.e(LOG_TAG, "Failed to create channel. " + operationStatus + ", statusCode = " +
+                                statusCode + ", errorMessage = " + errorMessage);
+                        System.exit(-1);
+                    }
+                });
             }
         });
     }
@@ -482,16 +472,16 @@ public class BBGDemoApplication extends Application implements NucleusClientList
                 // to it...
                 if ( ! isDisplaying502Alert ) {
                     AlertDialog alertDialog;
-                    alertDialog = new AlertDialog.Builder(currentActivity).setMessage("Doh! Encountered a server exception (502). Will keep retrying...")
-                                                                          .setTitle("Error")
-                                                                          .setPositiveButton("OK",
-                                                                                             new DialogInterface.OnClickListener() {
-                                                                                                 @Override
-                                                                                                 public void onClick( DialogInterface dialog, int which) {
-                                                                                                     isDisplaying502Alert = false;
-                                                                                                 }
-                                                                                             })
-                                                                          .create();
+                    alertDialog = new AlertDialog.Builder(getBaseContext()).setMessage("Doh! Encountered a server exception (502). Will keep retrying...")
+                                                                           .setTitle("Error")
+                                                                           .setPositiveButton("OK",
+                                                                                              new DialogInterface.OnClickListener() {
+                                                                                                  @Override
+                                                                                                  public void onClick( DialogInterface dialog, int which) {
+                                                                                                      isDisplaying502Alert = false;
+                                                                                                  }
+                                                                                              })
+                                                                           .create();
                     alertDialog.show();
                 }
             }
@@ -643,23 +633,17 @@ public class BBGDemoApplication extends Application implements NucleusClientList
 
     @Override
     public void onDatapointChange(Datapoint datapoint) {
-        if ( (datapoint != null) && (datapoint.getProtoName() != null) && "EnvData".equals(datapoint.getProtoName()) ) {
-            try {
-                EnvDataProto.EnvData edata = EnvDataProto.EnvData.parseFrom(datapoint.getProtobuffer());
-                EnvData envData = new EnvData(edata);
+        if ( (datapoint != null) && (datapoint.getTelemetry() != null) &&
+                TelemetryType.ENV_DATA.equals(datapoint.getTelemetryType())) {
+            EnvData envData = (EnvData) datapoint.getTelemetry();
 
-                Intent broadcast = new Intent();
-                broadcast.setAction(BROADCAST_SENSOR_ACTION);
-                broadcast.putExtra("h", envData.getHumidity());
-                broadcast.putExtra("t", envData.getTemperature());
-                broadcast.putExtra("ts", envData.getTimestamp());
+            Intent broadcast = new Intent();
+            broadcast.setAction(BROADCAST_SENSOR_ACTION);
+            broadcast.putExtra("h", envData.getHumidity());
+            broadcast.putExtra("t", envData.getTemperature());
+            broadcast.putExtra("ts", envData.getTimestamp());
 
-                sendBroadcast(broadcast);
-            }
-            catch (InvalidProtocolBufferNanoException e) {
-                showAlert("Error", "Failed to parse EnvData protobuffer.");
-                e.printStackTrace();
-            }
+            sendBroadcast(broadcast);
         }
     }
 

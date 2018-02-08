@@ -38,7 +38,6 @@ import com.spacetimeinsight.nucleuslib.datamapped.Member;
 import com.spacetimeinsight.nucleuslib.datamapped.MimeMessage;
 import com.spacetimeinsight.nucleuslib.datamapped.MimePart;
 import com.spacetimeinsight.protobuf.nano.MimeMessageProto;
-import com.spacetimeinsight.protobuf.nano.MimePartProto;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -111,7 +110,7 @@ public class ChatArrayAdapter extends ArrayAdapter<ChannelMessage> {
     }
 
     MimeMessageProto.MimeMessage makeMessage(String message, byte[] imageData) {
-        MimePartProto.MimePart mimePart = new MimePartProto.MimePart();
+        MimeMessageProto.MimePart mimePart = new MimeMessageProto.MimePart();
         mimePart.contentType = "text/plain";
         byte[] src = message.getBytes();
         byte[] content = new byte[src.length];
@@ -121,18 +120,17 @@ public class ChatArrayAdapter extends ArrayAdapter<ChannelMessage> {
         int cnt = (imageData == null ? 1 : 2);
 
         final MimeMessageProto.MimeMessage mimeMessage = new MimeMessageProto.MimeMessage();
-        MimePartProto.MimePart[] parts = new MimePartProto.MimePart[cnt];
+        MimeMessageProto.MimePart[] parts = new MimeMessageProto.MimePart[cnt];
         parts[0] = mimePart;
 
         if ( imageData != null ) {
-            mimePart = new MimePartProto.MimePart();
+            mimePart = new MimeMessageProto.MimePart();
             mimePart.contentType = "image/jpg";
             mimePart.content  = imageData;
             parts[1] = mimePart;
         }
 
         mimeMessage.parts = parts;
-
         return mimeMessage;
     }
 
