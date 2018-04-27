@@ -3,7 +3,6 @@ package com.spacetimeinsight.bbgdemo;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 
@@ -26,40 +25,38 @@ public class ChannelActivity extends AppCompatActivity {
 
         final NucleusService nucleusService = BBGDemoApplication.getNucleusService();
 
-        Button button = (Button) findViewById(R.id.setChannelButton);
-        button.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                EditText channelName = (EditText) findViewById(R.id.channelNameText);
-                final String cname = channelName.getText().toString();
+        Button button = findViewById(R.id.setChannelButton);
+        button.setOnClickListener(v -> {
+            EditText channelName = findViewById(R.id.channelNameText);
+            final String cname = channelName.getText().toString();
 
-                final ChannelService channelService = nucleusService.getChannelService();
-                channelService.findChannelByName(cname, null, new ChannelFindByNameResponseHandler() {
-                    @Override
-                    public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                        Log.i(LOG_TAG, "Failed to find by name. " + operationStatus + ", statusCode = " +
-                                statusCode + ", errorMessage = " + errorMessage);
-                        System.exit(-1);
-                    }
+            final ChannelService channelService = nucleusService.getChannelService();
+            channelService.findChannelByName(cname, null, new ChannelFindByNameResponseHandler() {
+                @Override
+                public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage,
+                                      boolean retryable) {
+                    Log.i(LOG_TAG, "Failed to find by name. " + operationStatus + ", statusCode = " +
+                            statusCode + ", errorMessage = " + errorMessage);
+                    System.exit(-1);
+                }
 
-                    @Override
-                    public void onSuccess(final String channelRef) {
-                        BBGDemoApplication app = (BBGDemoApplication) getApplication();
-                        if ( channelRef == null ) {
-                            app.showAlert("Failed", "Channel name `" + cname + "`does not exist.");
-                        }
-                        else {
-                            Log.i(LOG_TAG, "Found channel by name. channelRef = " + channelRef);
-                            app.joinChannel(channelRef);
-                        }
+                @Override
+                public void onSuccess(final String channelRef) {
+                    BBGDemoApplication app1 = (BBGDemoApplication) getApplication();
+                    if ( channelRef == null ) {
+                        app1.showAlert("Failed", "Channel name `" + cname + "`does not exist.");
                     }
-                });
-            }
+                    else {
+                        Log.i(LOG_TAG, "Found channel by name. channelRef = " + channelRef);
+                        app1.joinChannel(channelRef);
+                    }
+                }
+            });
         });
 
         Channel channel = nucleusService.getCurrentChannel();
         if ( channel != null ) {
-            EditText channelName = (EditText) findViewById(R.id.channelNameText);
+            EditText channelName = findViewById(R.id.channelNameText);
             channelName.setText(channel.getName());
         }
     }

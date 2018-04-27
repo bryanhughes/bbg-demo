@@ -2,9 +2,12 @@ package com.spacetimeinsight.example.bbgdemo;
 
 import com.spacetimeinsight.nucleus.java.NucleusClient;
 import com.spacetimeinsight.nucleuslib.*;
+import com.spacetimeinsight.nucleuslib.core.CachePolicy;
 import com.spacetimeinsight.nucleuslib.core.ClientDevice;
 import com.spacetimeinsight.nucleuslib.core.NucleusFactory;
 import com.spacetimeinsight.nucleuslib.datamapped.*;
+import com.spacetimeinsight.nucleuslib.listeners.NucleusChannelListener;
+import com.spacetimeinsight.nucleuslib.listeners.NucleusClientListener;
 import com.spacetimeinsight.nucleuslib.responsehandlers.*;
 import com.spacetimeinsight.nucleuslib.types.*;
 
@@ -18,7 +21,7 @@ import java.util.logging.*;
 import static com.spacetimeinsight.example.bbgdemo.Driver.nucleusClient;
 import static java.lang.System.exit;
 
-public class Console implements NucleusClientListener {
+public class Console {
     private static final String LOG_TAG = Console.class.getName();
     private static final Logger LOGGER = Logger.getLogger(LOG_TAG);
 
@@ -93,13 +96,105 @@ public class Console implements NucleusClientListener {
                             "\n  Serial Number: " + Driver.serialNumber);
 
         ClientDevice device = NucleusFactory.clientDevice(deviceID, DeviceType.discoverMatchingEnum(Driver.deviceType),
-                                                          Driver.manufacturer, Driver.modelIdentifier, Driver.serialNumber,
-                                                          Driver.osVersion, Driver.os);
+                                                          Driver.manufacturer, Driver.modelIdentifier, 
+                                                          Driver.serialNumber, Driver.osVersion, Driver.os, 
+                                                          NucleusClient.NullLocation);
         Driver.nucleusClient = new NucleusClient(device, Driver.apiAccountID, Driver.apiAccountToken,
-                                                 System.getProperty("user.dir"));
+                                                 System.getProperty("user.dir"), new CachePolicy());
         Driver.nucleusClient.setServerTarget("http", Driver.SERVER_URL, Driver.SERVER_PORT);
         Driver.nucleusClient.setActivePartition(Driver.apiKey, Driver.apiToken);
-        Driver.nucleusClient.addListener(this);
+
+        Driver.nucleusClient.addListener(ListenerType.CLIENT, new NucleusClientListener() {
+            @Override
+            public void handleUnsupportedVersion(String s) {
+
+            }
+
+            @Override
+            public void handleOldVersion(String s) {
+
+            }
+
+            @Override
+            public void onConnected(boolean b) {
+
+            }
+
+            @Override
+            public void handleServerMessage(String s) {
+
+            }
+
+            @Override
+            public void handleServerRequest(URL url) {
+
+            }
+
+            @Override
+            public void handleRequestError(String command, OperationStatus operationStatus, int statusCode,
+                                           String errorMsg) {
+                System.out.println(
+                        "Handling request error. Command = " + command + ", operationStatus = " + operationStatus.toString() + ", statusCode = " + statusCode + ", errorMessage = " + errorMsg);
+
+                if (OperationStatus.INVALID_DEVICE_TOKEN.equals(operationStatus)) {
+                    renewSession();
+                } else {
+                    System.out.println("Handling request error. " + command + " (" + statusCode + ") " + errorMsg);
+                }
+            }
+
+            @Override
+            public void handleException(Throwable throwable) {
+
+            }
+
+            @Override
+            public void onError(int i, String s) {
+
+            }
+
+            @Override
+            public void onErrorReset() {
+
+            }
+
+            @Override
+            public void onInactiveExpiration() {
+
+            }
+
+            @Override
+            public void onLowPowerNotification() {
+
+            }
+
+            @Override
+            public void onInternetActive(boolean b) {
+
+            }
+
+            @Override
+            public void onDeviceLocationChange(NucleusLocation nucleusLocation) {
+
+            }
+        });
+
+        Driver.nucleusClient.addListener(ListenerType.CHANNEL, new NucleusChannelListener() {
+            @Override
+            public void onPropertyChange(String channerRef, Property property) {
+                System.out.print("   > ack " + property.getName() + " = " + property.getValue());
+            }
+
+            @Override
+            public void onChannelHealthChange(String s, HealthType healthType, HealthType healthType1) {
+
+            }
+
+            @Override
+            public void onChange(String s, List<ChangeType> list) {
+
+            }
+        });
 
         // Must be done after the client has been initialized
         device.setScreenName(Driver.screenName);
@@ -110,7 +205,8 @@ public class Console implements NucleusClientListener {
             }
 
             @Override
-            public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
+            public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage, 
+                                  boolean retryable) {
                 LOGGER.severe("FAILED TO SET LOCATION. (" + statusCode + "), " + operationStatus + ", " + errorMessage);
             }
         });
@@ -118,7 +214,7 @@ public class Console implements NucleusClientListener {
         executor = Executors.newCachedThreadPool();
     }
 
-    private void startSession() throws NucleusException {
+    private void startSession() {
         final DeviceService deviceService = Driver.nucleusClient.getDeviceService();
         deviceService.startSession(new DeviceSessionResponseHandler() {
             @Override
@@ -132,8 +228,10 @@ public class Console implements NucleusClientListener {
                     }
                     deviceService.setProfile(new GeneralResponseHandler() {
                         @Override
-                        public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                            LOGGER.severe("Failed to update device profile. (" + statusCode + "), " + operationStatus + ", " + errorMessage);
+                        public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage,
+                                              boolean retryable) {
+                            LOGGER.severe("Failed to update device profile. (" + statusCode + "), " + 
+                                          operationStatus + ", " + errorMessage);
                         }
 
                         @Override
@@ -149,7 +247,7 @@ public class Console implements NucleusClientListener {
             }
 
             @Override
-            public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
+            public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage, boolean retryable) {
                 System.out.println("Session failed (" + statusCode + "). Retrying...");
             }
         });
@@ -158,21 +256,18 @@ public class Console implements NucleusClientListener {
     private void renewSession()  {
         System.out.println("Renewing session...");
         DeviceService deviceService = nucleusClient.getDeviceService();
-        try {
-            deviceService.renewSession(new DeviceSessionResponseHandler() {
-                @Override
-                public void onSuccess(boolean needsProfile, List<String> activeMemberships) {
-                    System.out.println("Successfully renewed device session.");
-                }
+        deviceService.renewSession(new DeviceSessionResponseHandler() {
+            @Override
+            public void onSuccess(boolean needsProfile, List<String> activeMemberships) {
+                System.out.println("Successfully renewed device session.");
+            }
 
-                @Override
-                public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg) {
-                    System.out.println("Failed to renew device session. (" + statusCode + ") - " + errorMsg);
-                }
-            });
-        } catch ( NucleusException e ) {
-            e.printStackTrace();
-        }
+            @Override
+            public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg,
+                                  boolean retryable) {
+                System.out.println("Failed to renew device session. (" + statusCode + ") - " + errorMsg);
+            }
+        });
     }
 
     private void joinOrCreateChannel(final String channelName) {
@@ -181,9 +276,10 @@ public class Console implements NucleusClientListener {
         channelService.findChannelByName(channelName, null, new ChannelFindByNameResponseHandler() {
 
             @Override
-            public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
+            public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage,
+                                  boolean retryable) {
                 LOGGER.severe("Failed to find by name. " + operationStatus + ", statusCode = " +
-                                    statusCode + ", errorMessage = " + errorMessage);
+                              statusCode + ", errorMessage = " + errorMessage);
                 System.exit(-1);
             }
 
@@ -204,30 +300,39 @@ public class Console implements NucleusClientListener {
     private void createChannel(String channelName) {
         final ChannelService channelService = Driver.nucleusClient.getChannelService();
         GeoCircle circle = new GeoCircle(Driver.myLocation.getLatitude(), Driver.myLocation.getLongitude(), 100);
-        channelService.createChannel(circle, -1, -1, channelName, null, "Site", false,
+        channelService.createChannel(circle, -1, -1, channelName, null, "Site", false, "Site",
                                      null, Driver.shortDescription, Driver.longDescription, new ChannelCreateResponseHandler() {
                     @Override
                     public void onSuccess(String channelRef) {
                         // Creating a channel automatically joins you to it, but does not automatically switch
                         // you into it.
                         System.out.println("Successfully created channel. channelRef = " + channelRef);
-                        channelService.switchChannel(channelRef, new GeneralResponseHandler() {
-                            @Override
-                            public void onSuccess() {
-                                scanLoop(channelRef);
-                            }
-
-                            @Override
-                            public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                                LOGGER.severe("Failed to create channel. " + operationStatus + ", statusCode = " +
-                                                    statusCode + ", errorMessage = " + errorMessage);
-                                System.exit(-1);
-                            }
-                        });
+                        try {
+                            channelService.switchChannel(channelRef, new GeneralResponseHandler() {
+                                @Override
+                                public void onSuccess() {
+                                    scanLoop(channelRef);
+                                }
+    
+                                @Override
+                                public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage,
+                                                      boolean retryable) {
+                                    LOGGER.severe("Failed to create channel. " + operationStatus + ", statusCode = " +
+                                                        statusCode + ", errorMessage = " + errorMessage);
+                                    System.exit(-1);
+                                }
+                            });
+                        }
+                        catch (NucleusException e) {
+                            e.printStackTrace();
+                            LOGGER.severe("Failed to switch channel.");
+                            System.exit(-1);
+                        }
                     }
 
                     @Override
-                    public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
+                    public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage,
+                                          boolean retryable) {
                         LOGGER.severe("Failed to create channel. " + operationStatus + ", statusCode = " +
                                             statusCode + ", errorMessage = " + errorMessage);
                         System.exit(-1);
@@ -255,7 +360,7 @@ public class Console implements NucleusClientListener {
         if ( c == 'q' ) {
             String m = message.substring(1).trim();
             List<MimePart> mimeParts = new ArrayList<>();
-            mimeParts.add(new MimePart("text/plain", "", m.getBytes()));
+            mimeParts.add(new MimePart(MimeType.TEXT_PLAIN, "", m.getBytes()));
             MimeMessage mimeMessage = new MimeMessage(mimeParts);
             channelService.publish(channelRef, mimeMessage, new ChannelPublishMessageResponseHandler() {
                 @Override
@@ -264,7 +369,8 @@ public class Console implements NucleusClientListener {
                 }
 
                 @Override
-                public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg) {
+                public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg,
+                                      boolean retryable) {
                     System.out.println("!!!! Failed to send question - (" + statusCode + ") " + errorMsg);
                 }
             });
@@ -279,7 +385,8 @@ public class Console implements NucleusClientListener {
                 }
 
                 @Override
-                public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg) {
+                public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg,
+                                      boolean retryable) {
                     System.out.println("!!!! Failed to set property - (" + statusCode + ") " + errorMsg);
                 }
             });
@@ -294,7 +401,8 @@ public class Console implements NucleusClientListener {
                 }
 
                 @Override
-                public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg) {
+                public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg,
+                                      boolean retryable) {
                     System.out.println("!!!! Failed to set property - (" + statusCode + ") " + errorMsg);
                 }
             });
@@ -312,7 +420,8 @@ public class Console implements NucleusClientListener {
                 }
 
                 @Override
-                public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg) {
+                public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg,
+                                      boolean retryable) {
                     System.out.println("!!!! Failed to set property - (" + statusCode + ") " + errorMsg);
                 }
             });
@@ -329,162 +438,43 @@ public class Console implements NucleusClientListener {
     private void joinChannel(final String channelRef) {
         final ChannelService channelService = nucleusClient.getChannelService();
 
-        Map<JoinOption, Object> joinOptions = new HashMap<>();
-        joinOptions.put(JoinOption.LAST_NCHANGES, 1);
-
+        Map<JoinOption, Object> joinOptions = JoinOption.getLastNChanges(1);
         channelService.joinChannel(channelRef, joinOptions, new ChannelJoinResponseHandler() {
             @Override
-            public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                org.pmw.tinylog.Logger.error("Failed to join channel. channelRef=" + channelRef +
-                                                     " : " + operationStatus + " : statusCode = " +
-                                                     statusCode + " : errorMessage = " + errorMessage);
+            public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage,
+                                  boolean retryable) {
+                LOGGER.severe("Failed to join channel. channelRef=" + channelRef +
+                              " : " + operationStatus + " : statusCode = " +
+                              statusCode + " : errorMessage = " + errorMessage);
                 exit(-1);
             }
 
             @Override
             public void onSuccess(final String channelRef) {
-                channelService.switchChannel(channelRef, new GeneralResponseHandler() {
-                    @Override
-                    public void onSuccess() {
-                        Channel channel = nucleusClient.getChannel(channelRef);
-                        System.out.println("Successfully joined channel " + channel.getName() + ". channelRef=" + channelRef);
-                        scanLoop(channelRef);
-                    }
-
-                    @Override
-                    public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                        org.pmw.tinylog.Logger.error("Failed to create channel. " + operationStatus + ", statusCode = " +
-                                                             statusCode + ", errorMessage = " + errorMessage);
-                        exit(-1);
-                    }
-                });
+                try {
+                    channelService.switchChannel(channelRef, new GeneralResponseHandler() {
+                        @Override
+                        public void onSuccess() {
+                            Channel channel = nucleusClient.getChannel(channelRef);
+                            System.out.println("Successfully joined channel " + channel.getName() + ". channelRef=" + channelRef);
+                            scanLoop(channelRef);
+                        }
+    
+                        @Override
+                        public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage,
+                                              boolean retryable) {
+                            LOGGER.severe("Failed to create channel. " + operationStatus + ", statusCode = " +
+                                          statusCode + ", errorMessage = " + errorMessage);
+                            exit(-1);
+                        }
+                    });
+                }
+                catch (NucleusException e) {
+                    e.printStackTrace();
+                    LOGGER.severe("Failed to switch channel.");
+                    exit(-1);
+                }
             }
         });
-    }
-
-
-    @Override
-    public void handleUnsupportedVersion(String s) {
-
-    }
-
-    @Override
-    public void handleOldVersion(String s) {
-
-    }
-
-    @Override
-    public void onConnected(boolean b) {
-
-    }
-
-    @Override
-    public void handleServerMessage(String s) {
-
-    }
-
-    @Override
-    public void handleServerRequest(URL url) {
-
-    }
-
-    @Override
-    public void handleBoot(String s, Member member) {
-
-    }
-
-    @Override
-    public void handleRequestError(String command, OperationStatus operationStatus, int statusCode, String errorMsg) {
-        System.out.println("Handling request error. Command = " + command +
-                                   ", operationStatus = " + operationStatus.toString() +
-                                   ", statusCode = " + statusCode +
-                                   ", errorMessage = " + errorMsg);
-
-        if ( OperationStatus.INVALID_DEVICE_TOKEN.equals(operationStatus) ) {
-            renewSession();
-        }
-        else {
-            System.out.println("Handling request error. " + command + " (" + statusCode + ") " + errorMsg);
-        }
-    }
-
-    @Override
-    public void handleException(Throwable throwable) {
-
-    }
-
-    @Override
-    public void onError(int i, String s) {
-
-    }
-
-    @Override
-    public void onErrorReset() {
-
-    }
-
-    @Override
-    public void onInactiveExpiration() {
-
-    }
-
-    @Override
-    public void onLowPowerNotification() {
-
-    }
-
-    @Override
-    public void onChange(String s, List<ChangeType> list) {
-
-    }
-
-    @Override
-    public void onPropertyChange(String s, Property property) {
-
-    }
-
-    @Override
-    public void onMessageRemoved(ChannelMessage channelMessage) {
-
-    }
-
-    @Override
-    public void onMessageChange(String channelRef, ChannelMessage channelMessage) {
-
-    }
-
-    @Override
-    public void onChannelHealthChange(String s, HealthType healthType, HealthType healthType1) {
-
-    }
-
-    @Override
-    public void onInternetActive(boolean b) {
-
-    }
-
-    @Override
-    public void onDatapointChange(Datapoint datapoint) {
-
-    }
-
-    @Override
-    public void onMemberProfileChange(Member member) {
-
-    }
-
-    @Override
-    public void onMemberStatusChange(Member member) {
-
-    }
-
-    @Override
-    public void onMemberPresenceChange(Member member) {
-
-    }
-
-    @Override
-    public void onMemberLocationChange(Member member, NucleusLocation nucleusLocation) {
-
     }
 }

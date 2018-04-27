@@ -203,14 +203,16 @@ the apt-get install seems to be broken.
 
 First, make sure your Python is up to date. This is all done on the Beaglebone. 
 
-    $ sudo apt-get install build-essential python-dev
+    $ sudo apt-get install build-essential python-dev python-smbus python-setuptools python-pip -y
 
 Next, you will need to download the [Adafruit Python DHT Sensor Library](https://github.com/adafruit/Adafruit_Python_DHT.git)
 
     $ cd ~
-    $ git clone https://github.com/adafruit/Adafruit_Python_DHT.git 
+    $ git clone https://github.com/adafruit/Adafruit_Python_DHT.git
+    $ cd Adafruit_Python_DHT
+    $ sudo python setup.py install 
     
-Change into the directory and follow the instructions in the README.md.
+If there any issues, or more detail, read the README.md.
 
 Finally, you will need to install the [Adafruit Python ADXL345](https://github.com/adafruit/Adafruit_Python_ADXL345) libraries. You
 can either do this manually, or you can install from pip with:

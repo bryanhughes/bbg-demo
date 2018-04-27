@@ -20,6 +20,7 @@ package com.spacetimeinsight.example.bbgdemo;
 import com.spacetimeinsight.nucleuslib.datamapped.NucleusLocation;
 
 import java.io.*;
+import java.util.Objects;
 import java.util.logging.Logger;
 
 /**
@@ -36,19 +37,26 @@ interface IOBridge {
     String GPS_FILENAME = "/tmp/gps.dat";
 
     class SensorData {
+        int counter;
         double humidity;
         double temperature;
         int timestamp;
+        double x;
+        double y;
+        double z;
 
         SensorData() {
             String sensorData = readFile(SENSOR_FILENAME);
-            LOGGER.info("sensor data = " + sensorData);
             if ( sensorData != null ) {
                 String[] parts = sensorData.split(",");
-                if ( parts.length == 3 ) {
-                    this.temperature = Double.parseDouble(parts[0]);
-                    this.humidity = Double.parseDouble(parts[1]);
-                    this.timestamp = Integer.parseInt(parts[2]);
+                if ( parts.length == 7 ) {
+                    this.counter = Integer.parseInt(parts[0]);
+                    this.temperature = Double.parseDouble(parts[1]);
+                    this.humidity = Double.parseDouble(parts[2]);
+                    this.timestamp = Integer.parseInt(parts[3]);
+                    this.x = Double.parseDouble(parts[4]);
+                    this.y = Double.parseDouble(parts[5]);
+                    this.z = Double.parseDouble(parts[6]);
                 }
             }
         }
@@ -58,27 +66,19 @@ interface IOBridge {
             if (this == o) {
                 return true;
             }
-            if (o == null || getClass() != o.getClass()) {
+            if (!(o instanceof SensorData)) {
                 return false;
             }
-
             SensorData that = (SensorData) o;
-
-            return Double.compare(that.humidity, humidity) == 0 &&
-                    Double.compare(that.temperature, temperature) == 0 &&
-                    timestamp == that.timestamp;
+            return Double.compare(that.humidity, humidity) == 0 && Double.compare(that.temperature,
+                                                                                  temperature) == 0 && timestamp == that.timestamp && Double
+                    .compare(that.x, x) == 0 && Double.compare(that.y, y) == 0 && Double.compare(that.z, z) == 0;
         }
 
         @Override
         public int hashCode() {
-            int result;
-            long temp;
-            temp = Double.doubleToLongBits(humidity);
-            result = (int) (temp ^ (temp >>> 32));
-            temp = Double.doubleToLongBits(temperature);
-            result = 31 * result + (int) (temp ^ (temp >>> 32));
-            result = 31 * result + timestamp;
-            return result;
+
+            return Objects.hash(humidity, temperature, timestamp, x, y, z);
         }
     }
 
@@ -92,7 +92,6 @@ interface IOBridge {
 
         GPSData() {
             String gpsDataStr = readFile(GPS_FILENAME);
-            LOGGER.info("gps data = " + gpsDataStr);
             if ( (gpsDataStr != null) && ! gpsDataStr.isEmpty() ) {
                 String[] parts = gpsDataStr.split(",");
                 if ( parts.length == 6 ) {
@@ -110,7 +109,7 @@ interface IOBridge {
                 }
             }
         }
-        
+
         NucleusLocation getLocation() {
             return new NucleusLocation(lat,  lng, 0, 0, System.currentTimeMillis(), 0, 0, (int) alt,
                                        nsats, 0, 0, 0, null, null, null);

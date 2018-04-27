@@ -21,7 +21,6 @@ import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.KeyEvent;
-import android.view.View;
 import android.widget.EditText;
 import android.widget.ListView;
 
@@ -33,6 +32,8 @@ import com.spacetimeinsight.nucleuslib.datamapped.MimeMessage;
 import com.spacetimeinsight.nucleuslib.responsehandlers.ChannelPublishMessageResponseHandler;
 import com.spacetimeinsight.nucleuslib.types.OperationStatus;
 import com.spacetimeinsight.protobuf.nano.MimeMessageProto;
+
+import java.io.IOException;
 
 public class ChatActivity extends AppCompatActivity {
     private static final String LOG_TAG = ChatActivity.class.getName();
@@ -49,23 +50,26 @@ public class ChatActivity extends AppCompatActivity {
 
         chatArrayAdapter = app.getChatAdapter();
         chatArrayAdapter.setApplication(app);
-        ListView lv = (ListView) findViewById(R.id.listView1);
+        ListView lv = findViewById(R.id.listView1);
         lv.setAdapter(chatArrayAdapter);
 
-        messageText = (EditText) findViewById(R.id.messageText);
-        messageText.setOnKeyListener(new View.OnKeyListener() {
-            public boolean onKey(View v, int keyCode, KeyEvent event) {
-                // If the event is a key-down event on the "enter" button
-                if ((event.getAction() == KeyEvent.ACTION_DOWN) && (keyCode == KeyEvent.KEYCODE_ENTER)) {
-                    // Perform action on key press
-                    MimeMessageProto.MimeMessage mimeMessage = chatArrayAdapter.makeMessage(messageText.getText().toString(), null);
+        messageText = findViewById(R.id.messageText);
+        messageText.setOnKeyListener((v, keyCode, event) -> {
+            // If the event is a key-down event on the "enter" button
+            if ((event.getAction() == KeyEvent.ACTION_DOWN) && (keyCode == KeyEvent.KEYCODE_ENTER)) {
+                // Perform action on key press
+                MimeMessageProto.MimeMessage mimeMessage = chatArrayAdapter.makeMessage(messageText.getText().toString(), null);
+                try {
                     publishMessage(mimeMessage);
-                    messageText.setText("");
-                    return true;
                 }
-
-                return false;
+                catch (IOException e) {
+                    e.printStackTrace();
+                }
+                messageText.setText("");
+                return true;
             }
+
+            return false;
         });
     }
 
@@ -89,7 +93,8 @@ public class ChatActivity extends AppCompatActivity {
      *
      * @param mimeMessage the message to publish
      */
-    private void publishMessage(final MimeMessageProto.MimeMessage mimeMessage) {
+    private void publishMessage(final MimeMessageProto.MimeMessage mimeMessage)
+            throws IOException {
         NucleusService nucleusService = BBGDemoApplication.getNucleusService();
         ChannelService channelService = nucleusService.getChannelService();
         String channelRef = nucleusService.getCurrentChannelRef();
@@ -103,10 +108,12 @@ public class ChatActivity extends AppCompatActivity {
             channelService.publish(channelRef, mimeMsg,
                                    new ChannelPublishMessageResponseHandler() {
                                        @Override
-                                       public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
+                                       public void onFailure(OperationStatus operationStatus, int statusCode,
+                                                             String errorMessage, boolean retryable) {
                                            BBGDemoApplication app = (BBGDemoApplication) getApplication();
                                            app.showAlert("Error", "Failed to publish message");
-                                           Log.e(LOG_TAG, "Failed to publish message - " + operationStatus + "(" + statusCode + ") " +
+                                           Log.e(LOG_TAG, "Failed to publish message - " + operationStatus +
+                                                          "(" + statusCode + ") " +
                                                           errorMessage);
                                        }
 

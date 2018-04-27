@@ -21,7 +21,6 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -33,80 +32,34 @@ import com.spacetimeinsight.bbgdemo.BBGDemoApplication;
 import com.spacetimeinsight.bbgdemo.R;
 import com.spacetimeinsight.nucleus.android.NucleusService;
 import com.spacetimeinsight.nucleuslib.Channel;
+import com.spacetimeinsight.nucleuslib.NucleusException;
 import com.spacetimeinsight.nucleuslib.datamapped.ChannelMessage;
 import com.spacetimeinsight.nucleuslib.datamapped.Member;
 import com.spacetimeinsight.nucleuslib.datamapped.MimeMessage;
 import com.spacetimeinsight.nucleuslib.datamapped.MimePart;
+import com.spacetimeinsight.nucleuslib.types.MimeType;
 import com.spacetimeinsight.protobuf.nano.MimeMessageProto;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 
 /**
  * (c) 2017, Space-Time Insight
  */
 public class ChatArrayAdapter extends ArrayAdapter<ChannelMessage> {
-    private static final String LOG_TAG = ChatArrayAdapter.class.getName();
     private BBGDemoApplication bbgDemoApplication;
-
-    private Map<Long, ChannelMessage> messageMap = new HashMap<>();
-    private List<Long> messageList = new ArrayList<>();
+    private Channel channel;
 
     void setApplication(BBGDemoApplication app) {
         this.bbgDemoApplication = app;
     }
 
-    @Override
-    public void add(final ChannelMessage message) {
-        NucleusService nucleusService = BBGDemoApplication.getNucleusService();
-        String channelRef = nucleusService.getCurrentChannelRef();
-        if ( channelRef == null ) {
-            Log.e(LOG_TAG, "Null channelRef - not in an active channel");
-            if ( bbgDemoApplication != null ) {
-                bbgDemoApplication.showAlert("Warning",
-                                             "You are not in an active channel. Please either create or join one.");
-            }
-        }
-        else {
-            if (message.getOffset() > 0x0fffffff) {
-                return;  //filter out temporary message.
-            }
-            Log.i(LOG_TAG, "Add message Offset " + message.getMessageOffset());
-            // NOTE: We want to use a map for our message storage with a sorted list of positional access. This will
-            // allow us to ensure one message per adapter.
-
-            if ( ! messageList.contains(message.getMessageOffset()) ) {
-                messageList.add(message.getMessageOffset());
-            }
-            messageMap.put(message.getMessageOffset(), message);
-
-            Collections.sort(messageList, new Comparator<Long>() {
-                @Override
-                public int compare(Long lhs, Long rhs) {
-                    if ( lhs < rhs ) {
-                        return -1;
-                    }
-                    else if ( lhs > rhs ) {
-                        return 1;
-                    }
-                    else {
-                        return 0;
-                    }
-                }
-            });
-        }
+    public void setChannel(Channel channel) {
+        this.channel = channel;
     }
 
-    @Override
     public void clear() {
-        super.clear();
-        messageMap.clear();
-        messageList.clear();
+        this.channel = null;
     }
 
     MimeMessageProto.MimeMessage makeMessage(String message, byte[] imageData) {
@@ -136,14 +89,12 @@ public class ChatArrayAdapter extends ArrayAdapter<ChannelMessage> {
 
     @Override
     public int getCount() {
-        return messageList.size();
-    }
-
-    @Override
-    public void remove(ChannelMessage message) {
-        // This is only to remove the in-flight message that was keyed by the eventID.
-        messageList.remove(message.getEventID());
-        messageMap.remove(message.getEventID());
+        if ( channel != null ) {
+            return channel.getChannelMessageCount();
+        }
+        else {
+            return 0;
+        }
     }
 
     public ChatArrayAdapter(Context context, int textViewResourceId) {
@@ -154,28 +105,27 @@ public class ChatArrayAdapter extends ArrayAdapter<ChannelMessage> {
     public View getView(int position, View convertView, ViewGroup parent) {
 
         NucleusService nucleusService = BBGDemoApplication.getNucleusService();
-        Long mid = messageList.get(position);
-        ChannelMessage message = messageMap.get(mid);
+        ChannelMessage message;
 
-        View row = null;
+        View row = convertView;
+        if (row == null) {
+            LayoutInflater inflater = (LayoutInflater) bbgDemoApplication.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+            row = inflater.inflate(R.layout.content_chat_message, parent, false);
+        }
+
         try {
+            message = channel.getChannelMessageItem(position);
             MimeMessage mimeMessage = message.getMimeMessage();
             List<MimePart> parts = mimeMessage.getMimeParts();
             MimePart part = parts.get(0);
 
-            row = convertView;
-            if (row == null) {
-                LayoutInflater inflater = (LayoutInflater) bbgDemoApplication.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-                row = inflater.inflate(R.layout.content_chat_message, parent, false);
-            }
-
             Channel channel = nucleusService.getCurrentChannel();
 
-            TextView chatText = (TextView) row.findViewById(R.id.chatMessageText);
-            ImageView imageView = (ImageView) row.findViewById(R.id.chatProfileImage);
-            TextView screenName = (TextView) row.findViewById(R.id.chatSenderName);
-            TextView timestamp = (TextView) row.findViewById(R.id.chatTimestampField);
-            TextView idField = (TextView) row.findViewById(R.id.chatMessageID);
+            TextView chatText = row.findViewById(R.id.chatMessageText);
+            ImageView imageView = row.findViewById(R.id.chatProfileImage);
+            TextView screenName = row.findViewById(R.id.chatSenderName);
+            TextView timestamp = row.findViewById(R.id.chatTimestampField);
+            TextView idField = row.findViewById(R.id.chatMessageID);
 
             String deviceID = message.getSenderID();
 
@@ -197,7 +147,7 @@ public class ChatArrayAdapter extends ArrayAdapter<ChannelMessage> {
             }
             imageView.setImageBitmap(bitmap);
 
-            idField.setText(String.valueOf(message.getMessageOffset()));
+            idField.setText(String.valueOf(message.getOffset()));
 
             String tsStr;
             long ts = message.getTimestamp();
@@ -218,7 +168,7 @@ public class ChatArrayAdapter extends ArrayAdapter<ChannelMessage> {
             }
             timestamp.setText(tsStr);
 
-            if ( part.getContentType().equals("text/plain") ) {
+            if ( part.getContentType().equals(MimeType.TEXT_PLAIN) ) {
                 String content = new String(part.getContent());
                 chatText.setText(content);
                 chatText.setVisibility(View.VISIBLE);
@@ -227,10 +177,9 @@ public class ChatArrayAdapter extends ArrayAdapter<ChannelMessage> {
                 chatText.setVisibility(View.INVISIBLE);
             }
         }
-        catch ( Exception e ) {
+        catch (NucleusException e) {
             e.printStackTrace();
-            Log.e(LOG_TAG, "Failed to parse protobuffer. " + e.getLocalizedMessage(), e);
-            nucleusService.handleOnError(100, "Failed to parse message.");
+            nucleusService.handleOnError(100, "Caught exception - " + e.getLocalizedMessage());
         }
 
         return row;

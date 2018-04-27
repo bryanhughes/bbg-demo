@@ -27,7 +27,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.spacetimeinsight.nucleus.android.NucleusService;
-import com.spacetimeinsight.nucleuslib.NucleusException;
 import com.spacetimeinsight.nucleuslib.PartitionInfo;
 import com.spacetimeinsight.nucleuslib.PartitionService;
 import com.spacetimeinsight.nucleuslib.responsehandlers.PartitionCreateResponseHandler;
@@ -49,7 +48,7 @@ public class CreatePartitionActivity extends AppCompatActivity {
 
         NucleusService nucleusService = BBGDemoApplication.getNucleusService();
         if ( nucleusService.getApiKey() != null ) {
-            TextView partitionKeyField = (TextView) findViewById(R.id.partitionKeyField);
+            TextView partitionKeyField = findViewById(R.id.partitionKeyField);
             partitionKeyField.setText(nucleusService.getApiKey());
         }
     }
@@ -63,16 +62,16 @@ public class CreatePartitionActivity extends AppCompatActivity {
         String apiAccountID = Config.API_ACCOUNTID;
         String apiAccountToken = Config.API_ACCOUNTTOKEN;
 
-        EditText partNameField = (EditText) findViewById(R.id.partName1Field);
+        EditText partNameField = findViewById(R.id.partName1Field);
         String partName = partNameField.getText().toString();
 
-        EditText appNameField = (EditText) findViewById(R.id.appNameField);
+        EditText appNameField = findViewById(R.id.appNameField);
         String appName = appNameField.getText().toString();
 
-        EditText supportEmailField = (EditText) findViewById(R.id.supportEmailField);
+        EditText supportEmailField = findViewById(R.id.supportEmailField);
         String supportEmail = supportEmailField.getText().toString();
 
-        EditText companyNameField = (EditText) findViewById(R.id.companyNameField);
+        EditText companyNameField = findViewById(R.id.companyNameField);
         String companyName = companyNameField.getText().toString();
 
         if ( partName.isEmpty() || appName.isEmpty() || companyName.isEmpty() ) {
@@ -90,7 +89,8 @@ public class CreatePartitionActivity extends AppCompatActivity {
                                                  @Override
                                                  public void onFailure(OperationStatus operationStatus,
                                                                        int statusCode,
-                                                                       final String errorMessage) {
+                                                                       final String errorMessage,
+                                                                       boolean retryable) {
                                                      handleFailure(operationStatus, statusCode, errorMessage);
                                                  }
                                              });
@@ -117,7 +117,7 @@ public class CreatePartitionActivity extends AppCompatActivity {
         app.dismissProgress();
         Toast.makeText(CreatePartitionActivity.this, "Successfully created partition", Toast.LENGTH_LONG).show();
 
-        TextView partitionKeyField = (TextView) findViewById(R.id.partitionKeyField);
+        TextView partitionKeyField = findViewById(R.id.partitionKeyField);
         partitionKeyField.setText(apiKey);
 
         SharedPreferencesHelper helper = new SharedPreferencesHelper(CreatePartitionActivity.this);
@@ -129,7 +129,7 @@ public class CreatePartitionActivity extends AppCompatActivity {
             finish();
             app.startSession();
         }
-        catch ( NucleusException | IOException e ) {
+        catch ( IOException e ) {
             e.printStackTrace();
             Log.e(LOG_TAG, e.getLocalizedMessage(), e);
             nucleusService.handleOnError(0, "Internal exception - " +
@@ -143,7 +143,7 @@ public class CreatePartitionActivity extends AppCompatActivity {
         String apiAccountID = Config.API_ACCOUNTID;
         String apiAccountToken = Config.API_ACCOUNTTOKEN;
 
-        EditText partNameField = (EditText) findViewById(R.id.partName2Field);
+        EditText partNameField = findViewById(R.id.partName2Field);
         String partName = partNameField.getText().toString();
 
         PartitionService partitionService = nucleusService.getPartitionService();
@@ -167,7 +167,8 @@ public class CreatePartitionActivity extends AppCompatActivity {
                                                     @Override
                                                     public void onFailure(OperationStatus operationStatus,
                                                                           int statusCode,
-                                                                          String errorMessage) {
+                                                                          String errorMessage,
+                                                                          boolean retryable) {
                                                         handleFailure(operationStatus, statusCode, errorMessage);
                                                     }
                                                 });

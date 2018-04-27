@@ -19,9 +19,13 @@ package com.spacetimeinsight.example.bbgdemo;
 
 import com.spacetimeinsight.nucleus.java.NucleusClient;
 import com.spacetimeinsight.nucleuslib.*;
+import com.spacetimeinsight.nucleuslib.core.CachePolicy;
 import com.spacetimeinsight.nucleuslib.core.ClientDevice;
 import com.spacetimeinsight.nucleuslib.core.NucleusFactory;
 import com.spacetimeinsight.nucleuslib.datamapped.*;
+import com.spacetimeinsight.nucleuslib.listeners.NucleusChannelListener;
+import com.spacetimeinsight.nucleuslib.listeners.NucleusClientListener;
+import com.spacetimeinsight.nucleuslib.listeners.NucleusMessageListener;
 import com.spacetimeinsight.nucleuslib.responsehandlers.*;
 import com.spacetimeinsight.nucleuslib.types.*;
 import org.pmw.tinylog.Logger;
@@ -44,7 +48,7 @@ import static java.lang.System.exit;
 /**
  * Demonstration BeagleBone
  */
-public class BeagleBone implements NucleusClientListener
+public class BeagleBone
 {
     private IOBridge.SensorData sensorData = null;
     private IOBridge.GPSData gpsData = null;
@@ -129,11 +133,166 @@ public class BeagleBone implements NucleusClientListener
 
         ClientDevice device = NucleusFactory.clientDevice(deviceID, DeviceType.discoverMatchingEnum(deviceType),
                                                           manufacturer, modelIdentifier, serialNumber,
-                                                          osVersion, os);
-        nucleusClient = new NucleusClient(device, apiAccountID, apiAccountToken, userDir);
+                                                          osVersion, os, cachedLocation);
+
+        // We only want minimal caching
+        CachePolicy cachePolicy = new CachePolicy(100, CachePolicy.DEFAULT_EXPIRY, 1024);
+
+        nucleusClient = new NucleusClient(device, apiAccountID, apiAccountToken, userDir, cachePolicy);
         nucleusClient.setServerTarget("http", SERVER_URL, SERVER_PORT);
         nucleusClient.setActivePartition(apiKey, apiToken);
-        nucleusClient.addListener(this);
+
+        nucleusClient.addListener(ListenerType.CLIENT, new NucleusClientListener() {
+            @Override
+            public void handleUnsupportedVersion(String s) {
+
+            }
+
+            @Override
+            public void handleOldVersion(String s) {
+
+            }
+
+            @Override
+            public void onConnected(boolean b) {
+
+            }
+
+            @Override
+            public void handleServerMessage(String s) {
+
+            }
+
+            @Override
+            public void handleServerRequest(URL url) {
+
+            }
+
+            @Override
+            public void handleRequestError(String command, OperationStatus operationStatus, int statusCode,
+                                           String errorMessage) {
+                Logger.info("Handling request error. Command = " + command +
+                                    ", operationStatus = " + operationStatus.toString() +
+                                    ", statusCode = " + statusCode +
+                                    ", errorMessage = " + errorMessage);
+
+                if ( OperationStatus.INVALID_DEVICE_TOKEN.equals(operationStatus) ) {
+                    renewSession();
+                }
+                else {
+                    Logger.error("Handling request error. " + command + " (" + statusCode + ") " + errorMessage);
+                }
+            }
+
+            @Override
+            public void handleException(Throwable throwable) {
+                Logger.error("Caught exception - " + throwable.getLocalizedMessage() );
+                writeMessage(throwable.getLocalizedMessage());
+            }
+
+            @Override
+            public void onError(int errorNo, String errorMessage) {
+                Logger.error("Handling error. errorNo = " + errorNo + ", errorMessage = " + errorMessage);
+            }
+
+            @Override
+            public void onErrorReset() {
+
+            }
+
+            @Override
+            public void onInactiveExpiration() {
+
+            }
+
+            @Override
+            public void onLowPowerNotification() {
+
+            }
+
+            @Override
+            public void onInternetActive(boolean b) {
+
+            }
+
+            @Override
+            public void onDeviceLocationChange(NucleusLocation nucleusLocation) {
+
+            }
+        });
+
+        nucleusClient.addListener(ListenerType.CHANNEL, new NucleusChannelListener() {
+            @Override
+            public void onPropertyChange(String channelRef, Property property) {
+                Logger.info(">>> Handling channel property " + property);
+                setProperty(channelRef, property);
+            }
+
+            @Override
+            public void onChannelHealthChange(String s, HealthType healthType, HealthType healthType1) {
+
+            }
+
+            @Override
+            public void onChange(String s, List<ChangeType> list) {
+
+            }
+        });
+
+        nucleusClient.addListener(ListenerType.MESSAGES, new NucleusMessageListener() {
+            @Override
+            public void onMessageChange(ChannelMessage channelMessage) {
+                // This is hackbot response. Make sure we dont reply to our own messages!
+                if ( ! channelMessage.getSenderID().equals(nucleusClient.getClientDevice().getDeviceID()) ) {
+                    String channelRef = channelMessage.getChannelRef();
+
+                    double temp = (sensorData != null ? sensorData.temperature : -1);
+                    double hum = (sensorData != null ? sensorData.humidity : -1);
+
+                    Channel channel = nucleusClient.getChannel(channelRef);
+
+                    Member member = channel.getMember(channelMessage.getSenderID());
+
+                    MimeMessage mimeMessage = channelMessage.getMimeMessage();
+                    List<MimePart> parts = mimeMessage.getMimeParts();
+                    MimePart part = parts.get(0);
+
+                    String message = (new String(part.getContent())).toLowerCase();
+                    System.out.println(">>> MESSAGE: " + message);
+
+                    if ( message.contains("help") ) {
+                        sendResponse("Hi " + member.getScreenName() +
+                                             ". You can ask me: how are you? what is the temperature? what " +
+                                             "is the humidity? what is the time? That's about it.\n\nOh yeah, you can also ask me " +
+                                             "to do something like please display HELLO");
+                    }
+                    else if ( message.startsWith("display") ) {
+                        String display = message.substring(7).trim();
+                        writeMessage(display);
+                    }
+                    else if ( message.contains("what time is it") ) {
+                        sendResponse("System time is " + System.currentTimeMillis());
+                    }
+                    else if ( message.contains("what is the temperature") || message.contains("how hot is it") ||
+                            message.contains("how warm is it")  || message.contains("how cold is it")) {
+                        String response = "The temperature is " + temp + "C right now";
+                        sendResponse(response);
+                    }
+                    else if ( message.contains("what is the humidity") ) {
+                        String response = "The humidity is " + hum + "% right now";
+                        sendResponse(response);
+                    }
+                    else if ( message.contains("are you") ) {
+                        String response = howAmI(member.getScreenName()) + "\n\nIt is currently " + temp + " C and " +
+                                hum + " % humidity";
+                        sendResponse(response);
+                    }
+                    else {
+                        sendResponse(iDontUnderstand(member.getScreenName()));
+                    }
+                }
+            }
+        });
 
         // Must be done after the client has been initialized
         device.setScreenName(screenName);
@@ -144,7 +303,8 @@ public class BeagleBone implements NucleusClientListener
             }
 
             @Override
-            public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
+            public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage,
+                                  boolean retryable) {
                 Logger.error("FAILED TO SET LOCATION. (" + statusCode + "), " + operationStatus + ", " + errorMessage);
             }
         });
@@ -156,9 +316,11 @@ public class BeagleBone implements NucleusClientListener
         channelService.findChannelByName(channelName, null, new ChannelFindByNameResponseHandler() {
 
             @Override
-            public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
+            public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage,
+                                  boolean retryable) {
                 Logger.error("Failed to find by name. " + operationStatus + ", statusCode = " +
                             statusCode + ", errorMessage = " + errorMessage);
+                writeMessage("Failed find");
                 exit(-1);
             }
 
@@ -180,7 +342,7 @@ public class BeagleBone implements NucleusClientListener
         final ChannelService channelService = nucleusClient.getChannelService();
         NucleusLocation loc = (gpsData != null ? gpsData.getLocation() : Driver.myLocation);
         GeoCircle circle = new GeoCircle(loc.getLatitude(), loc.getLongitude(), 100);
-        channelService.createChannel(circle, -1, -1, channelName, null, "Site", false,
+        channelService.createChannel(circle, -1, -1, channelName, null, "Site", false, "Site",
                                      null, shortDescription, longDescription, new ChannelCreateResponseHandler() {
                     @Override
                     public void onSuccess(String channelRef) {
@@ -190,9 +352,11 @@ public class BeagleBone implements NucleusClientListener
                     }
 
                     @Override
-                    public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
+                    public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage,
+                                          boolean retryable) {
                         Logger.error("Failed to create channel. " + operationStatus + ", statusCode = " +
                                     statusCode + ", errorMessage = " + errorMessage);
+                        writeMessage("Failed create");
                         exit(-1);
                     }
                 });
@@ -201,40 +365,105 @@ public class BeagleBone implements NucleusClientListener
     private void joinChannel(final String channelRef) {
         final ChannelService channelService = nucleusClient.getChannelService();
 
-        Map<JoinOption, Object> joinOptions = new HashMap<>();
-        joinOptions.put(JoinOption.LAST_NCHANGES, 1);
+        Map<JoinOption, Object> joinOptions = JoinOption.getLastNChanges(1);
 
         channelService.joinChannel(channelRef, joinOptions, new ChannelJoinResponseHandler() {
             @Override
-            public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
+            public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage,
+                                  boolean retryable) {
                 Logger.error("Failed to join channel. channelRef=" + channelRef +
                             " : " + operationStatus + " : statusCode = " +
                             statusCode + " : errorMessage = " + errorMessage);
+                writeMessage("Failed join");
                 exit(-1);
             }
 
             @Override
             public void onSuccess(final String channelRef) {
-                channelService.switchChannel(channelRef, new GeneralResponseHandler() {
-                    @Override
-                    public void onSuccess() {
-                        Channel channel = nucleusClient.getChannel(channelRef);
-                        System.out.println("Successfully joined channel " + channel.getName() + ". channelRef=" + channelRef);
-                        // Now that we have our channel created, we want to enable polling on it so that we
-                        // can respond to any chat messages to display on our OLED
-                        nucleusClient.enablePolling(true);
-                        sendLoop();
-                    }
+                try {
+                    channelService.switchChannel(channelRef, new GeneralResponseHandler() {
+                        @Override
+                        public void onSuccess() {
+                            Channel channel = nucleusClient.getChannel(channelRef);
+                            System.out.println("Successfully joined channel " + channel.getName() + ". channelRef=" + channelRef);
+                            // Now that we have our channel created, we want to enable polling on it so that we
+                            // can respond to any chat messages to display on our OLED
+                            nucleusClient.enablePolling(true);
 
-                    @Override
-                    public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
-                        Logger.error("Failed to create channel. " + operationStatus + ", statusCode = " +
-                                             statusCode + ", errorMessage = " + errorMessage);
-                        exit(-1);
-                    }
-                });
+                            Property property = channel.getProperty("led");
+                            setProperty(channelRef, property);
+
+                            sendLoop();
+                        }
+
+                        @Override
+                        public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage,
+                                              boolean retryable) {
+                            Logger.error("Failed to create channel. " + operationStatus + ", statusCode = " +
+                                                 statusCode + ", errorMessage = " + errorMessage);
+                            writeMessage("Failed create");
+                            exit(-1);
+                        }
+                    });
+                }
+                catch (NucleusException e) {
+                    e.printStackTrace();
+                    Logger.error("Switch failed");
+                    writeMessage("Switch failed");
+                    exit(-1);
+                }
             }
         });
+    }
+
+    private void setProperty(String channelRef, Property property) {
+        // We got a property change. For our BeagleBone demo, the property is the LED light
+        if ( property.getName().equals("led") ) {
+            String valueStr = property.getValue();
+            try {
+                IOBridge.writeLED(valueStr);
+            } catch (IOException e) {
+                e.printStackTrace();
+                writeMessage(e.getLocalizedMessage());
+            }
+        }
+        if ( property.getName().equals("display") ) {
+            String message = property.getValue();
+            writeMessage(message);
+        }
+        else if ( property.getName().equals("shutdown") && ! property.getValue().equals("-1") ) {
+            // Make sure to reset the shutdown property
+            Channel channel = nucleusClient.getChannel(channelRef);
+            channel.setProperty("shutdown", "-1", new GeneralResponseHandler() {
+                @Override
+                public void onSuccess() {
+                    String valueStr = property.getValue();
+                    try {
+                        shutdown(valueStr);
+                    }
+                    catch (IOException e) {
+                        e.printStackTrace();
+                        writeMessage(e.getLocalizedMessage());
+                        Logger.error("Failed to shutdown device!");
+                    }
+                }
+
+                @Override
+                public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg,
+                                      boolean retryable) {
+                    Logger.error("---- NOT SHUTTING DOWN ----");
+                    Logger.error("Failed to reset shutdown! " + operationStatus + " : (" + statusCode + ") - " +
+                                         errorMsg);
+                }
+            });
+        }
+        else if ( property.getName().equals("display") ) {
+            // We got a new channel message, now display it on the OLED. It is important to remember that the actual
+            // device control is being handled by the Python scripts. We write our message to a shared file that the
+            // scripts are listening to
+            String message = property.getValue();
+            writeMessage(message);
+        }
     }
 
     private void sendLoop() {
@@ -262,7 +491,7 @@ public class BeagleBone implements NucleusClientListener
         executor.submit(r);
     }
 
-    private void startSession() throws NucleusException {
+    private void startSession() {
         final DeviceService deviceService = nucleusClient.getDeviceService();
         deviceService.startSession(new DeviceSessionResponseHandler() {
             @Override
@@ -277,7 +506,8 @@ public class BeagleBone implements NucleusClientListener
                     }
                     deviceService.setProfile(new GeneralResponseHandler() {
                         @Override
-                        public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
+                        public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage,
+                                              boolean retryable) {
                             Logger.error("Failed to update device profile. (" + statusCode + "), " + operationStatus + ", " + errorMessage);
                         }
 
@@ -294,7 +524,8 @@ public class BeagleBone implements NucleusClientListener
             }
 
             @Override
-            public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
+            public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage,
+                                  boolean retryable) {
                 String msg = "Failed to start device session. " + operationStatus + ", statusCode = " +
                             statusCode + ", errorMessage = " + errorMessage;
                 writeMessage("!! RETRYING !!");
@@ -313,7 +544,9 @@ public class BeagleBone implements NucleusClientListener
         // but we are moving.
         if ( ! sensorData.equals(this.sensorData) || ! gpsData.equals(this.gpsData) ) {
             NucleusLocation loc = getLocation(gpsData);
-            EnvData envData = new EnvData(sensorData.timestamp, sensorData.temperature, 0, sensorData.humidity, 0);
+            Acceleration acceleration = new Acceleration(sensorData.x, sensorData.y, sensorData.z);
+            EnvData envData = new EnvData(sensorData.timestamp, sensorData.temperature, 0, sensorData.humidity, 0,
+                                          acceleration);
 
             DeviceService deviceService = nucleusClient.getDeviceService();
             Datapoint datapoint = deviceService.newDatapoint(100, loc, "sample", 0, HealthType.NORMAL,
@@ -328,7 +561,8 @@ public class BeagleBone implements NucleusClientListener
                 }
 
                 @Override
-                public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
+                public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage,
+                                      boolean retryable) {
                     Logger.error("Failed to set datapoint : " + operationStatus + " (" + statusCode + ") - " + errorMessage);
                     BeagleBone.this.sensorData = null;
                     BeagleBone.this.gpsData = null;
@@ -343,23 +577,20 @@ public class BeagleBone implements NucleusClientListener
     private void renewSession()  {
         Logger.info("Renewing session...");
         DeviceService deviceService = nucleusClient.getDeviceService();
-        try {
-            deviceService.renewSession(new DeviceSessionResponseHandler() {
-                @Override
-                public void onSuccess(boolean needsProfile, List<String> activeMemberships) {
-                    Logger.info("Successfully renewed device session.");
-                    // We will need to re-enable our polling
-                    nucleusClient.enablePolling(true);
-                }
+        deviceService.renewSession(new DeviceSessionResponseHandler() {
+            @Override
+            public void onSuccess(boolean needsProfile, List<String> activeMemberships) {
+                Logger.info("Successfully renewed device session.");
+                // We will need to re-enable our polling
+                nucleusClient.enablePolling(true);
+            }
 
-                @Override
-                public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg) {
-                    Logger.error("Failed to renew device session. (" + statusCode + ") - " + errorMsg);
-                }
-            });
-        } catch ( NucleusException e ) {
-            e.printStackTrace();
-        }
+            @Override
+            public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg,
+                                  boolean retryable) {
+                Logger.error("Failed to renew device session. (" + statusCode + ") - " + errorMsg);
+            }
+        });
     }
 
     public static void main(String[] args) throws Exception {
@@ -371,136 +602,11 @@ public class BeagleBone implements NucleusClientListener
 
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
-    //
-
-    @Override
-    public void handleUnsupportedVersion(String s) {
-
-    }
-
-    @Override
-    public void handleOldVersion(String s) {
-
-    }
-
-    @Override
-    public void onConnected(boolean b) {
-
-    }
-
-    @Override
-    public void handleServerMessage(String s) {
-
-    }
-
-    @Override
-    public void handleServerRequest(URL url) {
-
-    }
-
-    @Override
-    public void handleBoot(String s, Member member) {
-
-    }
-
-    @Override
-    public void handleRequestError(String command, OperationStatus operationStatus, int statusCode, String errorMessage) {
-        Logger.info("Handling request error. Command = " + command +
-                      ", operationStatus = " + operationStatus.toString() +
-                      ", statusCode = " + statusCode +
-                      ", errorMessage = " + errorMessage);
-
-        if ( OperationStatus.INVALID_DEVICE_TOKEN.equals(operationStatus) ) {
-            renewSession();
-        }
-        else {
-            Logger.error("Handling request error. " + command + " (" + statusCode + ") " + errorMessage);
-        }
-    }
-
-    @Override
-    public void handleException(Throwable throwable) {
-        Logger.error("Caught exception - " + throwable.getLocalizedMessage() );
-    }
-
-    @Override
-    public void onError(int errorNo, String errorMessage) {
-        Logger.error("Handling error. errorNo = " + errorNo + ", errorMessage = " + errorMessage);
-    }
-
-    @Override
-    public void onErrorReset() {
-
-    }
-
-    @Override
-    public void onInactiveExpiration() {
-
-    }
-
-    @Override
-    public void onLowPowerNotification() {
-
-    }
-
-    @Override
-    public void onChange(String channelRef, List<ChangeType> changeTypes) {
-
-    }
-
-    @Override
-    public void onPropertyChange(String channelRef, Property property) {
-        Logger.info(">>> Handling channel property " + property);
-        // We got a property change. For our BeagleBone demo, the property is the LED light
-        if ( property.getName().equals("led") ) {
-            String valueStr = property.getValue();
-            try {
-                IOBridge.writeLED(valueStr);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-        if ( property.getName().equals("display") ) {
-            String message = property.getValue();
-            writeMessage(message);
-        }
-        else if ( property.getName().equals("shutdown") && ! property.getValue().equals("-1") ) {
-            // Make sure to reset the shutdown property
-            Channel channel = nucleusClient.getChannel(channelRef);
-            channel.setProperty("shutdown", "-1", new GeneralResponseHandler() {
-                @Override
-                public void onSuccess() {
-                    String valueStr = property.getValue();
-                    try {
-                        shutdown(valueStr);
-                    }
-                    catch (IOException e) {
-                        e.printStackTrace();
-                        Logger.error("Failed to shutdown device!");
-                    }
-                }
-
-                @Override
-                public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg) {
-                    Logger.error("---- NOT SHUTTING DOWN ----");
-                    Logger.error("Failed to reset shutdown! " + operationStatus + " : (" + statusCode + ") - " +
-                                               errorMsg);
-                }
-            });
-        }
-        else if ( property.getName().equals("display") ) {
-            // We got a new channel message, now display it on the OLED. It is important to remember that the actual
-            // device control is being handled by the Python scripts. We write our message to a shared file that the
-            // scripts are listening to
-            String message = property.getValue();
-            writeMessage(message);
-        }
-    }
-
     private void writeMessage(String message) {
         try {
             IOBridge.writeMessage(message);
         } catch (IOException e) {
+            writeMessage(e.getLocalizedMessage());
             e.printStackTrace();
         }
     }
@@ -519,62 +625,6 @@ public class BeagleBone implements NucleusClientListener
         BufferedReader stdInputReader = new BufferedReader(new InputStreamReader(proc.getInputStream()));
         String stdInputStr = stdInputReader.readLine();
         Logger.info("SHUTDOWN: " + stdInputStr);
-    }
-
-    @Override
-    public void onMessageRemoved(ChannelMessage channelMessage) {
-
-    }
-
-    @Override
-    public void onMessageChange(String channelRef, ChannelMessage channelMessage) {
-        // This is hackbot response. Make sure we dont reply to our own messages!
-        if ( ! channelMessage.getSenderID().equals(nucleusClient.getClientDevice().getDeviceID()) ) {
-            double temp = (sensorData != null ? sensorData.temperature : -1);
-            double hum = (sensorData != null ? sensorData.humidity : -1);
-
-            Channel channel = nucleusClient.getChannel(channelRef);
-
-            Member member = channel.getMember(channelMessage.getSenderID());
-
-            MimeMessage mimeMessage = channelMessage.getMimeMessage();
-            List<MimePart> parts = mimeMessage.getMimeParts();
-            MimePart part = parts.get(0);
-
-            String message = (new String(part.getContent())).toLowerCase();
-            System.out.println(">>> MESSAGE: " + message);
-
-            if ( message.contains("help") ) {
-                sendResponse("Hi " + member.getScreenName() +
-                                     ". You can ask me: how are you? what is the temperature? what " +
-                                     "is the humidity? what is the time? That's about it.\n\nOh yeah, you can also ask me " +
-                                     "to do something like please display HELLO");
-            }
-            else if ( message.startsWith("display") ) {
-                String display = message.substring(7).trim();
-                writeMessage(display);
-            }
-            else if ( message.contains("what time is it") ) {
-                sendResponse("System time is " + System.currentTimeMillis());
-            }
-            else if ( message.contains("what is the temperature") || message.contains("how hot is it") ||
-                    message.contains("how warm is it")  || message.contains("how cold is it")) {
-                String response = "The temperature is " + temp + "C right now";
-                sendResponse(response);
-            }
-            else if ( message.contains("what is the humidity") ) {
-                String response = "The humidity is " + hum + "% right now";
-                sendResponse(response);
-            }
-            else if ( message.contains("are you") ) {
-                String response = howAmI(member.getScreenName()) + "\n\nIt is currently " + temp + " C and " +
-                        hum + " % humidity";
-                sendResponse(response);
-            }
-            else {
-                sendResponse(iDontUnderstand(member.getScreenName()));
-            }
-        }
     }
 
     private String howAmI(String screenName) {
@@ -618,7 +668,7 @@ public class BeagleBone implements NucleusClientListener
         System.out.println("<<< RESPONSE: " + response);
 
         List<MimePart> mimeParts = new ArrayList<>();
-        mimeParts.add(new MimePart("text/plain", "", response.getBytes()));
+        mimeParts.add(new MimePart(MimeType.TEXT_PLAIN, "", response.getBytes()));
         MimeMessage mimeMessage = new MimeMessage(mimeParts);
         channelService.publish(channelRef, mimeMessage, new ChannelPublishMessageResponseHandler() {
             @Override
@@ -627,45 +677,11 @@ public class BeagleBone implements NucleusClientListener
             }
 
             @Override
-            public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg) {
+            public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg,
+                                  boolean retryable) {
                 System.out.println("!!!! Failed to send response - (" + statusCode + ") " + errorMsg);
             }
         });
-    }
-
-    @Override
-    public void onChannelHealthChange(String channelRef, HealthType oldHealthType, HealthType newHealthType) {
-
-    }
-
-    @Override
-    public void onInternetActive(boolean flag) {
-
-    }
-
-    @Override
-    public void onDatapointChange(Datapoint datapoint) {
-
-    }
-
-    @Override
-    public void onMemberProfileChange(Member member) {
-
-    }
-
-    @Override
-    public void onMemberStatusChange(Member member) {
-
-    }
-
-    @Override
-    public void onMemberLocationChange(Member member, NucleusLocation location) {
-
-    }
-
-    @Override
-    public void onMemberPresenceChange(Member member) {
-
     }
 
     private NucleusLocation getLocation(IOBridge.GPSData gpsData)
@@ -694,7 +710,3 @@ public class BeagleBone implements NucleusClientListener
     }
 }
 
-/*
- * Copyright 2013 Go Factory LLC
- * Created on July 13, 2013 by gsc
- */

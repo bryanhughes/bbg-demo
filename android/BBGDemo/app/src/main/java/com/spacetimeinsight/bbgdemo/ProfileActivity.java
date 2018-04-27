@@ -84,7 +84,7 @@ public class ProfileActivity extends Activity {
         final NucleusService nucleusService = BBGDemoApplication.getNucleusService();
         final ClientDevice clientDevice = nucleusService.getClientDevice();
 
-        screenName = (EditText) findViewById(R.id.screen_name);
+        screenName = findViewById(R.id.screen_name);
         screenName.setText(clientDevice.getScreenName());
 
         screenName.addTextChangedListener(new TextWatcher() {
@@ -101,7 +101,7 @@ public class ProfileActivity extends Activity {
             }
         });
 
-        profileView = (ImageView) findViewById(R.id.profile_image);
+        profileView = findViewById(R.id.profile_image);
 
         byte[] imageData = clientDevice.getProfileImage();
         if ( imageData != null ) {
@@ -116,7 +116,7 @@ public class ProfileActivity extends Activity {
             profileView.setImageDrawable(drawable);
         }
 
-        takePhotoButton = (Button) findViewById(R.id.takePhotoButton);
+        takePhotoButton = findViewById(R.id.takePhotoButton);
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             takePhotoButton.setEnabled(false);
             ActivityCompat.requestPermissions(this, new String[] { Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE }, 0);
@@ -149,7 +149,8 @@ public class ProfileActivity extends Activity {
             }
 
             @Override
-            public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage) {
+            public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage,
+                                  boolean retryable) {
                 BBGDemoApplication app = (BBGDemoApplication) getApplication();
                 app.showAlert("Error", "Failed to save profile");
                 Log.e(LOG_TAG, "Failed to save profile - " + operationStatus + "(" + statusCode + ") " + errorMessage);

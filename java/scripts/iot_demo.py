@@ -1,23 +1,32 @@
+#!/usr/bin/python
+#
+import logging
+
+import datetime
 import time
-import os
-import traceback
 
 import grove_dht
-import grove_oled
-import grove_led
 import grove_gps
+import grove_accel
+import grove_led
+import oled_display
+import iot_displaythread
+import iot_ledthread
 
 THRESHOLD_TEMPERATURE = 22.0
-MESSAGE_FILENAME = "/tmp/message.dat"
-LED_FILENAME = "/tmp/led.dat"
 SENSOR_FILENAME = "/tmp/sensor.dat"
 GPS_FILENAME = "/tmp/gps.dat"
 
-if __name__=="__main__":
+
+def main():
+    fmt = '%(asctime)-15s %(message)s'
+    logging.basicConfig(format=fmt, level=logging.INFO)
+    logger = logging.getLogger('iot_demo')
+
+    logger.info("[iot_demo] ------------ STARTING UP ------------")
+
     rgb_led = grove_led.ChainableLED(grove_led.CLK_PIN, grove_led.DATA_PIN, grove_led.NUMBER_OF_LEDS)
     rgb_led.setColorRGB(0, 255, 255, 255)
-
-    print('Starting up...')
 
     for x in range(0, 3):
         rgb_led.setColorRGB(0, 255, 0, 0)
@@ -27,155 +36,107 @@ if __name__=="__main__":
 
     time.sleep(1)
 
-    grove_oled.oled_init()
-    grove_oled.oled_setNormalDisplay()
-    grove_oled.oled_clearDisplay()
+    logger.info("[iot_demo] Starting display thread")
+    display = oled_display.OLEDDisplay()
+    iot_displaythread.run(display)
 
-    msgCountDown = 0
-    ledCountDown = 0
-    clear = 1
+    logger.info("[iot_demo] Starting led thread")
+    iot_ledthread.run()
 
     humidity0 = 0
     temperature0 = 0
-
+    axes0 = {}
     lat0 = 0.0
     lng0 = 0.0
     sats0 = 0
-    c = '+'
+    counter = 0
+    total_time = 0
 
-    lat = 0.0
-    lng = 0.0
-    latY = 0
-    lngY = 0
-
-    g = grove_gps.GPS()
+    gps = grove_gps.GPS()
+    adxl345 = grove_accel.ADXL345()
 
     while True:
         # First, attempt to read from our GPS
+        stime = datetime.datetime.now()
         try:
-            x = g.read()  # Read from GPS
-            [t, fix, sats1, alt, lat1, lat_ns, lng1, lng_ew] = g.vals()  # Get the individual values
+            gps.read()  # Read from GPS
+            [t, fix, sats1, alt, lat1, lat_ns, lng1, lng_ew] = gps.vals()  # Get the individual values
 
             if lat_ns == "N":
-                lat = g.decimal_degrees(float(lat1))
-                # HACK! Can not seem to get format() to work properly on the OLED display
-                if int(float(lat1)) <= 9999:
-                    latY = 2
-                else:
-                    latY = 1                
+                lat = gps.decimal_degrees(float(lat1))
             else:
-                lat = -g.decimal_degrees(float(lat1))
-                if (int(float(lat1)) <= 9999):
-                    latY = 1
+                lat = -gps.decimal_degrees(float(lat1))
 
             if lng_ew == "W":
-                lng = -g.decimal_degrees(float(lng1))
-                if int(float(lng1)) <= 9999:
-                    lngY = 1
+                lng = -gps.decimal_degrees(float(lng1))
             else:
-                lng = g.decimal_degrees(float(lng1))
-                if int(float(lng1)) <= 9999:
-                    lngY = 2
-                else:
-                    lngY = 1
+                lng = gps.decimal_degrees(float(lng1))
 
-            print "lat >>>" + str(int(float(lat1)))
-            print "lng >>>" + str(int(float(lng1)))
+            logger.info("[iot_demo] lat >>>" + str(int(float(lat1))))
+            logger.info("[iot_demo] lng >>>" + str(int(float(lng1))))
 
-            if ( lat0 != lat1) and (lng0 != lng1) and (sats0 != sats1):
+            if (lat0 != lat1) and (lng0 != lng1) and (sats0 != sats1):
                 gps_str = t + "," + str(lat) + "," + str(lng) + "," + fix + "," + sats1 + "," + alt
                 gps_file = open(GPS_FILENAME, "w")
                 gps_file.write(gps_str)
                 gps_file.close()
-                print('GPS = ' + gps_str)
+                logger.info("[iot_demo] GPS = %s", gps_str)
 
                 lat0 = lat1
                 lng0 = lng1
                 sats0 = sats1
         except IndexError:
-            print "Unable to read GPS"
+            logger.error("[iot_demo] Unable to read GPS")
         except Exception as e:
-            print "Failed to read GPS - " + e.message
+            logger.error("[iot_demo] Failed to read GPS - %s", e.message)
+
+        # Write out the env_data to a single file....
 
         humidity1, temperature1 = grove_dht.read()
+        axes1 = adxl345.get_axes(True)
 
-        if (humidity0 != humidity1) or (temperature0 != temperature1):
+        # If nothing is different, then dont report
+
+        change_flag = False
+        if (humidity0 != humidity1) or (temperature0 != temperature1) or (axes0 != axes1):
             # We will open the file and overwrite it on every write...
             sensor_file = open(SENSOR_FILENAME, "w")
-            sensor_file.write('{0:0.1f},{1:0.1f},{2:0d}'.format(temperature1, humidity1, int(time.time())))
+            sensor_file.write('{0:0d},{1:0.1f},{2:0.1f},{3:0d},{4:0.4f},{5:0.4f},{6:0.4f}'.format(int(counter),
+                                                                                                  temperature1,
+                                                                                                  humidity1,
+                                                                                                  int(time.time()),
+                                                                                                  axes1['x'],
+                                                                                                  axes1['y'],
+                                                                                                  axes1['z']))
             sensor_file.close()
-            print('Temp={0:0.1f}*  Humidity={1:0.1f}%'.format(temperature1, humidity1))
+            change_flag = True
 
+        counter = counter + 1
         humidity0 = humidity1
         temperature0 = temperature1
+        axes0 = axes1
 
-        # We are going to look to a file for any message to display on our OLED
-        if msgCountDown == 0:
-            try:
-                message_file = open(MESSAGE_FILENAME, "r")
-            except IOError:
-                if clear == 1:
-                    grove_oled.oled_clearDisplay()
-                    clear = 0
+        display.setValues(temperature0, humidity0, lat0, lng0)
 
-                grove_oled.oled_setTextXY(0, 0)
-                grove_oled.oled_putString('Temp:{0:0.1f}C'.format(temperature1))
-                grove_oled.oled_setTextXY(1, 0)
-                grove_oled.oled_putString('Hum: {0:0.1f}%'.format(humidity1))
-                grove_oled.oled_setTextXY(2, 0)
-                grove_oled.oled_putString("            ")
-                grove_oled.oled_setTextXY(3, latY)
-                grove_oled.oled_putString('{:>3.6f}'.format(lat))
-                grove_oled.oled_setTextXY(4, lngY)
-                grove_oled.oled_putString('{:>3.6f}'.format(lng))
-            else:
-                message = message_file.readline()
-                print('message = ' + message)
-                message_file.close()
-                os.remove(MESSAGE_FILENAME)
+        delta = datetime.datetime.now() - stime
+        run_time = int(delta.total_seconds() * 1000)
+        total_time = total_time + run_time
+        avg_time = total_time / counter
 
-                grove_oled.oled_clearDisplay()
-                time.sleep(2)
-
-                grove_oled.oled_setTextXY(0, 0)
-                grove_oled.oled_putString("            ")
-                grove_oled.oled_setTextXY(0, 0)
-                grove_oled.oled_putString(message)
-                grove_oled.oled_setTextXY(1, 0)
-                grove_oled.oled_putString("            ")
-                grove_oled.oled_setTextXY(2, 0)
-                grove_oled.oled_putString("            ")
-                grove_oled.oled_setTextXY(3, 0)
-                grove_oled.oled_putString("            ")
-                grove_oled.oled_setTextXY(4, 0)
-                grove_oled.oled_putString("            ")
-                msgCountDown = 10
-                clear = 1
+        if change_flag:
+            logger.info("[iot_demo] {0:d} : Temp={1:0.1f}*, Humidity={2:0.1f}%, "
+                        "Accel={3:0.4f}, {4:0.4f}, {5:0.4f} - Took {6:0.3f}ms / Avg {7:0.3f}ms".format(counter,
+                                                                                                       temperature1,
+                                                                                                       humidity1,
+                                                                                                       axes1['x'],
+                                                                                                       axes1['y'],
+                                                                                                       axes1['z'],
+                                                                                                       run_time,
+                                                                                                       avg_time))
         else:
-            msgCountDown = msgCountDown - 1
-            if msgCountDown < 0:
-                msgCountDown = 0
+            logger.info("[iot_demo] {0:d} : No change - Took {1:0.3f} ms / Avg {2:0.3f}ms".format(counter,
+                                                                                                  run_time, avg_time))
 
-        if c == '+':
-            c = '-'
-        else:
-            c = '+'
-        grove_oled.oled_setTextXY(6, 0)
-        grove_oled.oled_putString("SpaceTime")
-        grove_oled.oled_setTextXY(6, 10)
-        grove_oled.oled_putString(c)
 
-        # The same for what to do with our LED
-        try:
-            led_file = open(LED_FILENAME, "r")
-            led_values = led_file.readline()
-            led_file.close()
-            os.remove(LED_FILENAME)
-            try:
-                parts = [x.strip() for x in led_values.split(',')]
-                print "led_values = [{}, {}, {}] - len = {}".format(int(parts[0]), int(parts[1]), int(parts[2]), len(parts))
-                rgb_led.setColorRGB(0, int(parts[0]), int(parts[1]), int(parts[2]))
-            except:
-                print('An error occured setting LED RGB.')
-        except:
-            pass
+if __name__ == "__main__":
+    main()
