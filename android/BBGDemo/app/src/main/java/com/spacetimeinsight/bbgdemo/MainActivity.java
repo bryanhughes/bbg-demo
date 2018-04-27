@@ -48,6 +48,7 @@ public class MainActivity extends Activity {
     private TextView hView;
     private TextView tView;
     private TextView tsView;
+    private TextView aView;
 
     private BottomNavigationView.OnNavigationItemSelectedListener mOnNavigationItemSelectedListener = item -> {
                 Intent intent;
@@ -95,10 +96,14 @@ public class MainActivity extends Activity {
                 double h = intent.getDoubleExtra("h", 0);
                 double t = intent.getDoubleExtra("t", 0);
                 long ts = intent.getLongExtra("ts", 0);
+                double x = intent.getDoubleExtra("x", 0);
+                double y = intent.getDoubleExtra("y", 0);
+                double z = intent.getDoubleExtra("z", 0);
 
                 hView.setText(String.format(Locale.getDefault(), "%.2f %%", h));
                 tView.setText(String.format(Locale.getDefault(), "%.1f C", t));
                 tsView.setText(String.valueOf(ts));
+                aView.setText(String.format(Locale.getDefault(), "%.3f, %.3f, %.3f", x, y, z));
             }
         }
     };
@@ -299,6 +304,9 @@ public class MainActivity extends Activity {
 
         tsView = findViewById(R.id.timestampTextView);
         tsView.setText(String.valueOf(0));
+
+        aView = findViewById(R.id.accelTextView);
+        aView.setText(String.valueOf(0));
 
         ensureStarted.postDelayed(ensureRunnable, 1000);
     }

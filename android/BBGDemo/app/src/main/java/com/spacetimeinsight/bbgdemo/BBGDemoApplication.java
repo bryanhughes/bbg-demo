@@ -28,6 +28,7 @@ import com.spacetimeinsight.nucleuslib.NucleusException;
 import com.spacetimeinsight.nucleuslib.PartitionInfo;
 import com.spacetimeinsight.nucleuslib.PartitionService;
 import com.spacetimeinsight.nucleuslib.core.ClientDevice;
+import com.spacetimeinsight.nucleuslib.datamapped.Acceleration;
 import com.spacetimeinsight.nucleuslib.datamapped.ChannelMessage;
 import com.spacetimeinsight.nucleuslib.datamapped.Datapoint;
 import com.spacetimeinsight.nucleuslib.datamapped.EnvData;
@@ -120,6 +121,11 @@ public class BBGDemoApplication extends Application {
                                     broadcast.putExtra("h", envData.getHumidity());
                                     broadcast.putExtra("t", envData.getTemperature());
                                     broadcast.putExtra("ts", envData.getTimestamp());
+
+                                    Acceleration acceleration = envData.getAcceleration();
+                                    broadcast.putExtra("x", acceleration.getAccelX());
+                                    broadcast.putExtra("y", acceleration.getAccelY());
+                                    broadcast.putExtra("z", acceleration.getAccelZ());
 
                                     sendBroadcast(broadcast);
                                 }
