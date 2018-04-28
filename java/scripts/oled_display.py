@@ -54,6 +54,8 @@ class OLEDDisplay:
         else:
             lngCol = 1
 
+        self.logger.info("[iot_display] lat = %s, lng = %s", self.lat, self.lng)
+
         grove_oled.oled_setTextXY(0, 0)
         grove_oled.oled_putString('Temp:{0:0.1f}C'.format(self.temp))
         grove_oled.oled_setTextXY(1, 0)
