@@ -291,11 +291,10 @@ public class BBGDemoApplication extends Application {
                                     // to it...
                                     if ( ! isDisplaying502Alert ) {
                                         AlertDialog alertDialog;
-                                        alertDialog = new AlertDialog.Builder(getBaseContext()).setMessage("Doh! Encountered a server exception (502). Will keep retrying...")
-                                                                                               .setTitle("Error")
-                                                                                               .setPositiveButton("OK",
-                                                                                                                  (dialog, which) -> isDisplaying502Alert = false)
-                                                                                               .create();
+                                        alertDialog = new AlertDialog.Builder(currentActivity).setMessage("Doh! Encountered a server exception (502). Will keep retrying...")
+                                                                                              .setTitle("Error")
+                                                                                              .setPositiveButton("OK", (dialog, which) -> isDisplaying502Alert = false)
+                                                                                              .create();
                                         alertDialog.show();
                                     }
                                 }
