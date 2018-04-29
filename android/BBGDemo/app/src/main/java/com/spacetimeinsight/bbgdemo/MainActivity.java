@@ -4,7 +4,6 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
@@ -15,8 +14,6 @@ import android.support.design.widget.BottomNavigationView;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AlertDialog;
 import android.util.Log;
-import android.view.MenuItem;
-import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.SeekBar;
@@ -30,6 +27,7 @@ import com.spacetimeinsight.nucleuslib.NucleusException;
 import com.spacetimeinsight.nucleuslib.responsehandlers.GeneralResponseHandler;
 import com.spacetimeinsight.nucleuslib.types.OperationStatus;
 
+import java.io.IOException;
 import java.util.Locale;
 import java.util.Objects;
 
@@ -50,42 +48,37 @@ public class MainActivity extends Activity {
     private TextView hView;
     private TextView tView;
     private TextView tsView;
+    private TextView aView;
 
-    private BottomNavigationView.OnNavigationItemSelectedListener mOnNavigationItemSelectedListener
-            = new BottomNavigationView.OnNavigationItemSelectedListener() {
+    private BottomNavigationView.OnNavigationItemSelectedListener mOnNavigationItemSelectedListener = item -> {
+                Intent intent;
 
-        @Override
-        public boolean onNavigationItemSelected(@NonNull MenuItem item) {
-            Intent intent;
-
-            switch (item.getItemId()) {
-                case R.id.navigation_home:
-                    intent = new Intent(getApplicationContext(), MainActivity.class);
-                    startActivity(intent);
-                    return true;
-                case R.id.navigation_map:
-                    intent = new Intent(getApplicationContext(), MapsActivity.class);
-                    startActivity(intent);
-                    return true;
-                case R.id.navigation_chat:
-                    intent = new Intent(getApplicationContext(), ChatActivity.class);
-                    startActivity(intent);
-                    return true;
-                case R.id.navigation_partition:
-                    intent = new Intent(getApplicationContext(), CreatePartitionActivity.class);
-                    startActivity(intent);
-                    return true;
-                case R.id.navigation_profile:
-                    // Show profile activity
-                    intent = new Intent(getApplicationContext(), ProfileActivity.class);
-                    intent.putExtra("FROM_SESSION", false);
-                    startActivity(intent);
-                    return true;
-            }
-            return false;
-        }
-
-    };
+                switch (item.getItemId()) {
+                    case R.id.navigation_home:
+                        intent = new Intent(getApplicationContext(), MainActivity.class);
+                        startActivity(intent);
+                        return true;
+                    case R.id.navigation_map:
+                        intent = new Intent(getApplicationContext(), MapsActivity.class);
+                        startActivity(intent);
+                        return true;
+                    case R.id.navigation_chat:
+                        intent = new Intent(getApplicationContext(), ChatActivity.class);
+                        startActivity(intent);
+                        return true;
+                    case R.id.navigation_partition:
+                        intent = new Intent(getApplicationContext(), CreatePartitionActivity.class);
+                        startActivity(intent);
+                        return true;
+                    case R.id.navigation_profile:
+                        // Show profile activity
+                        intent = new Intent(getApplicationContext(), ProfileActivity.class);
+                        intent.putExtra("FROM_SESSION", false);
+                        startActivity(intent);
+                        return true;
+                }
+                return false;
+            };
 
     private BroadcastReceiver receiver = new BroadcastReceiver() {
         @Override
@@ -103,10 +96,14 @@ public class MainActivity extends Activity {
                 double h = intent.getDoubleExtra("h", 0);
                 double t = intent.getDoubleExtra("t", 0);
                 long ts = intent.getLongExtra("ts", 0);
+                double x = intent.getDoubleExtra("x", 0);
+                double y = intent.getDoubleExtra("y", 0);
+                double z = intent.getDoubleExtra("z", 0);
 
                 hView.setText(String.format(Locale.getDefault(), "%.2f %%", h));
                 tView.setText(String.format(Locale.getDefault(), "%.1f C", t));
                 tsView.setText(String.valueOf(ts));
+                aView.setText(String.format(Locale.getDefault(), "%.3f, %.3f, %.3f", x, y, z));
             }
         }
     };
@@ -120,27 +117,29 @@ public class MainActivity extends Activity {
             // The NucleusService should be bound to at this point...
             NucleusService nucleusService = BBGDemoApplication.getNucleusService();
             if ( nucleusService != null ) {
+                SharedPreferencesHelper helper = new SharedPreferencesHelper(getApplicationContext());
+                final String apiKey = helper.getAPIKey();
+                final String apiToken = helper.getAPIToken();
+
                 try {
-                    SharedPreferencesHelper helper = new SharedPreferencesHelper(getApplicationContext());
-                    final String apiKey = helper.getAPIKey();
-                    final String apiToken = helper.getAPIToken();
+                    nucleusService.setActivePartition(apiKey, apiToken);
 
                     // If we have an empty apiKey, then we need to create or find and join a partition. Otherwise,
                     // just start our session
+                    Intent i;
                     if ( apiKey.isEmpty() ) {
-                        Intent i = new Intent(getApplicationContext(), CreatePartitionActivity.class);
+                        i = new Intent(getApplicationContext(), CreatePartitionActivity.class);
                         i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
                         startActivity(i);
                     }
                     else {
-                        nucleusService.setActivePartition(apiKey, apiToken);
                         app.startSession();
                     }
                 }
-                catch ( NucleusException e ) {
+                catch (IOException e) {
                     e.printStackTrace();
-                    Log.e(LOG_TAG, e.getLocalizedMessage(), e);
-                    nucleusService.handleOnError(0, "Internal exception - " + e.getLocalizedMessage());
+                    Log.e(LOG_TAG, "Failed to start session. " + e.getLocalizedMessage(), e);
+                    app.showAlert("Error", "Failed to start session.");
                 }
             }
             else {
@@ -164,19 +163,26 @@ public class MainActivity extends Activity {
         public void onStopTrackingTouch(SeekBar seekBar) {
             final NucleusService nucleusService = BBGDemoApplication.getNucleusService();
             Channel channel = nucleusService.getCurrentChannel();
-            final String ledStr = getLEDString();
-            channel.setProperty("led", ledStr, new GeneralResponseHandler() {
-                @Override
-                public void onSuccess() {
-                    Log.i(LOG_TAG, "Successfully set channel property - " + ledStr);
-                }
+            if ( channel == null ) {
+                BBGDemoApplication app = (BBGDemoApplication) getApplication();
+                app.showAlert("Error", "You must first either create a new channel, or join an existing one.");
+            }
+            else {
+                final String ledStr = getLEDString();
+                channel.setProperty("led", ledStr, new GeneralResponseHandler() {
+                    @Override
+                    public void onSuccess() {
+                        Log.i(LOG_TAG, "Successfully set channel property - " + ledStr);
+                    }
 
-                @Override
-                public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg) {
-                    Log.e(LOG_TAG, "Failed to set channel property - " + ledStr + ". " + operationStatus + " (" +
-                            statusCode + ") - " + errorMsg);
-                }
-            });
+                    @Override
+                    public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg,
+                                          boolean retryable) {
+                        Log.e(LOG_TAG, "Failed to set channel property - " + ledStr + ". " + operationStatus + " (" +
+                                statusCode + ") - " + errorMsg);
+                    }
+                });
+            }
         }
     };
 
@@ -189,23 +195,26 @@ public class MainActivity extends Activity {
         BBGDemoApplication app = (BBGDemoApplication) getApplication();
         app.setCurrentActivity(this);
 
-        redBar = (SeekBar) findViewById(R.id.redSeekBar);
-        greenBar = (SeekBar) findViewById(R.id.greenSeekBar);
-        blueBar = (SeekBar) findViewById(R.id.blueSeekBar);
+        redBar = findViewById(R.id.redSeekBar);
+        greenBar = findViewById(R.id.greenSeekBar);
+        blueBar = findViewById(R.id.blueSeekBar);
 
         redBar.setOnSeekBarChangeListener(onSeekChangeBarListener);
         greenBar.setOnSeekBarChangeListener(onSeekChangeBarListener);
         blueBar.setOnSeekBarChangeListener(onSeekChangeBarListener);
 
-        Button sendButton = (Button) findViewById(R.id.sendButton);
-        sendButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                NucleusService nucleusService = BBGDemoApplication.getNucleusService();
-                EditText messageText = (EditText) findViewById(R.id.messageText);
-                final String message = messageText.getText().toString();
+        Button sendButton = findViewById(R.id.sendButton);
+        sendButton.setOnClickListener(v -> {
+            NucleusService nucleusService = BBGDemoApplication.getNucleusService();
+            EditText messageText = findViewById(R.id.messageText);
+            final String message = messageText.getText().toString();
 
-                Channel channel = nucleusService.getCurrentChannel();
+            Channel channel = nucleusService.getCurrentChannel();
+            if ( channel == null ) {
+                BBGDemoApplication app1 = (BBGDemoApplication) getApplication();
+                app1.showAlert("Error", "You must first either create a new channel, or join an existing one.");
+            }
+            else {
                 channel.setProperty("display", message, new GeneralResponseHandler() {
                     @Override
                     public void onSuccess() {
@@ -213,7 +222,8 @@ public class MainActivity extends Activity {
                     }
 
                     @Override
-                    public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg) {
+                    public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg,
+                                          boolean retryable) {
                         Log.e(LOG_TAG, "Failed to set channel property - " + message + ". " + operationStatus + " (" +
                                 statusCode + ") - " + errorMsg);
                     }
@@ -221,13 +231,15 @@ public class MainActivity extends Activity {
             }
         });
 
-        Button shutdownButton = (Button) findViewById(R.id.shutdownButton);
-        shutdownButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                NucleusService nucleusService = BBGDemoApplication.getNucleusService();
-                Channel channel = nucleusService.getCurrentChannel();
-
+        Button shutdownButton = findViewById(R.id.shutdownButton);
+        shutdownButton.setOnClickListener(v -> {
+            NucleusService nucleusService = BBGDemoApplication.getNucleusService();
+            Channel channel = nucleusService.getCurrentChannel();
+            if ( channel == null ) {
+                BBGDemoApplication app12 = (BBGDemoApplication) getApplication();
+                app12.showAlert("Error", "You must first either create a new channel, or join an existing one.");
+            }
+            else {
                 channel.setProperty("shutdown", "now", new GeneralResponseHandler() {
                     @Override
                     public void onSuccess() {
@@ -235,7 +247,8 @@ public class MainActivity extends Activity {
                     }
 
                     @Override
-                    public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg) {
+                    public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg,
+                                          boolean retryable) {
                         Log.e(LOG_TAG, "Failed to set shutdown property. " + operationStatus + " : (" + statusCode + ") - " +
                                 errorMsg);
                     }
@@ -243,9 +256,8 @@ public class MainActivity extends Activity {
             }
         });
 
-        BottomNavigationView navigation = (BottomNavigationView) findViewById(R.id.navigation);
+        BottomNavigationView navigation = findViewById(R.id.navigation);
         navigation.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
-
 
         checkPermission();
     }
@@ -265,12 +277,9 @@ public class MainActivity extends Activity {
                 builder.setTitle("Error");
                 builder.setMessage("BBGDemo needs access to your phones GPS for location tracking. Without these " +
                                            "permissions, this demo may not function propertly.");
-                builder.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        dialog.dismiss();
-                        checkPermission();
-                    }
+                builder.setPositiveButton(android.R.string.ok, (dialog, which) -> {
+                    dialog.dismiss();
+                    checkPermission();
                 });
 
                 builder.create().show();
@@ -287,14 +296,17 @@ public class MainActivity extends Activity {
         greenBar.setProgress(app.getGreenLED());
         blueBar.setProgress(app.getBlueLED());
 
-        hView = (TextView) findViewById(R.id.humidityTextView);
+        hView = findViewById(R.id.humidityTextView);
         hView.setText(String.valueOf(0));
 
-        tView = (TextView) findViewById(R.id.tempTextView);
+        tView = findViewById(R.id.tempTextView);
         tView.setText(String.valueOf(0));
 
-        tsView = (TextView) findViewById(R.id.timestampTextView);
+        tsView = findViewById(R.id.timestampTextView);
         tsView.setText(String.valueOf(0));
+
+        aView = findViewById(R.id.accelTextView);
+        aView.setText(String.valueOf(0));
 
         ensureStarted.postDelayed(ensureRunnable, 1000);
     }

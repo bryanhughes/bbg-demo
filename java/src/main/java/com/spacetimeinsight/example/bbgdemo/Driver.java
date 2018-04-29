@@ -31,6 +31,7 @@ class Driver {
     static String modelIdentifier;
     static String os;
     static String osVersion;
+    static String userDir;
 
     static {
         Properties localProperties = loadProperties();
@@ -40,6 +41,7 @@ class Driver {
                                        "apiAccountToken=<API Account Token>\n" +
                                        "apiKey=<partition key>\n" +
                                        "apiToken=<partition token>\n" +
+                                       "userDir=<user dir>\n" +
                                        "channelName=<channel name>\n" +
                                        "lat=<latitude of device>\n" +
                                        "lng=<longitude of device>\n" +
@@ -59,6 +61,11 @@ class Driver {
         Driver.apiAccountToken = localProperties.getProperty("apiAccountToken");
         Driver.apiKey = localProperties.getProperty("apiKey");
         Driver.apiToken = localProperties.getProperty("apiToken");
+        Driver.userDir = localProperties.getProperty("userDir");
+        if ( Driver.userDir == null ) {
+            System.out.println("userDir must be set!");
+            System.exit(-1);
+        }
         Driver.channelName = localProperties.getProperty("channelName");
 
         double lat = Double.valueOf(localProperties.getProperty("lat"));

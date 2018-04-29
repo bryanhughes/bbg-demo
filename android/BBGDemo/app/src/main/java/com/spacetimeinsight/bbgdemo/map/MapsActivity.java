@@ -18,7 +18,6 @@ import android.widget.ImageView;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.GoogleMap;
-import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.MapsInitializer;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
@@ -30,31 +29,66 @@ import com.spacetimeinsight.bbgdemo.BBGDemoApplication;
 import com.spacetimeinsight.bbgdemo.R;
 import com.spacetimeinsight.nucleus.android.NucleusService;
 import com.spacetimeinsight.nucleuslib.Channel;
-import com.spacetimeinsight.nucleuslib.Datapoint;
-import com.spacetimeinsight.nucleuslib.Member;
-import com.spacetimeinsight.nucleuslib.NucleusClientListener;
-import com.spacetimeinsight.nucleuslib.datamapped.ChannelMessage;
+import com.spacetimeinsight.nucleuslib.datamapped.Member;
 import com.spacetimeinsight.nucleuslib.datamapped.NucleusLocation;
-import com.spacetimeinsight.nucleuslib.datamapped.Property;
-import com.spacetimeinsight.nucleuslib.types.ChangeType;
-import com.spacetimeinsight.nucleuslib.types.HealthType;
+import com.spacetimeinsight.nucleuslib.listeners.NucleusMemberListener;
+import com.spacetimeinsight.nucleuslib.types.ListenerType;
 import com.spacetimeinsight.nucleuslib.types.MemberStateType;
-import com.spacetimeinsight.nucleuslib.types.OperationStatus;
 
-import java.net.URL;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback,
                                                               GoogleMap.OnMarkerClickListener,
-                                                              GoogleMap.OnCameraIdleListener,
-                                                              NucleusClientListener {
+                                                              GoogleMap.OnCameraIdleListener {
     private static final String LOG_TAG = MapsActivity.class.getName();
 
-    private MapView mapView;
     private GoogleMap map;
     private Map<String, Marker> memberMarkers = new HashMap<>();
+
+    private NucleusMemberListener memberListener = new NucleusMemberListener() {
+        @Override
+        public void handleBoot(String channelRef, Member member) {
+            // The member has been booted from the channel, so remove them from the map. They are still formally
+            // a member of the channel. Since we are only using a single channel, we can just ignore the channelRef
+            Marker marker = memberMarkers.get(member.getDeviceID());
+            if ( marker != null ) {
+                marker.remove();
+            }
+        }
+
+        @Override
+        public void onProfileChange(Member member) {
+            // If the members profile image is used, then re-render the marker
+        }
+
+        @Override
+        public void onStatusChange(Member member) {
+            // Render a different marker to reflect the status of the member in the channel.
+        }
+
+        @Override
+        public void onPresenceChange(Member member) {
+            // Render a different marker to reflect the presence of the member in the channel. If they left the channel,
+            // then remove them from the map
+            if ( member.getState().equals(MemberStateType.LEFT) ) {
+                Marker marker = memberMarkers.get(member.getDeviceID());
+                if ( marker != null ) {
+                    marker.remove();
+                }
+            }
+        }
+
+        @Override
+        public void onLocationChange(Member member, NucleusLocation nucleusLocation) {
+            Marker marker = memberMarkers.get(member.getDeviceID());
+            if ( marker != null ) {
+                marker.remove();
+            }
+            marker = makeMemberMarker(member);
+            memberMarkers.put(member.getDeviceID(), marker);
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,7 +96,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         setContentView(R.layout.activity_maps);
 
         NucleusService nucleusService = BBGDemoApplication.getNucleusService();
-        nucleusService.addListener(MapsActivity.this);
+        nucleusService.addListener(ListenerType.MEMBERS, memberListener);
 
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
@@ -73,7 +107,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     protected void onDestroy() {
         super.onDestroy();
         NucleusService nucleusService = BBGDemoApplication.getNucleusService();
-        nucleusService.removeListener(MapsActivity.this);
+        nucleusService.removeListener(ListenerType.MEMBERS, memberListener);
     }
 
     /**
@@ -174,138 +208,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 memberMarkers.put(member.getDeviceID(), marker);
             }
         }
-    }
-
-    @Override
-    public void handleUnsupportedVersion(String s) {
-        // Ignore. Let the main listener handle it.
-    }
-
-    @Override
-    public void handleOldVersion(String s) {
-        // Ignore. Let the main listener handle it.
-    }
-
-    @Override
-    public void onConnected(boolean b) {
-        // Ignore. Let the main listener handle it.
-    }
-
-    @Override
-    public void handleServerMessage(String s) {
-        // Ignore. Let the main listener handle it.
-    }
-
-    @Override
-    public void handleServerRequest(URL url) {
-        // Ignore. Let the main listener handle it.
-    }
-
-    @Override
-    public void handleBoot(String channelRef, Member member) {
-        // The member has been booted from the channel, so remove them from the map. They are still formally
-        // a member of the channel. Since we are only using a single channel, we can just ignore the channelRef
-        Marker marker = memberMarkers.get(member.getDeviceID());
-        if ( marker != null ) {
-            marker.remove();;
-        }
-    }
-
-    @Override
-    public void handleRequestError(String s, OperationStatus operationStatus, int i, String s1) {
-        // Ignore. Let the main listener handle it.
-    }
-
-    @Override
-    public void handleException(Throwable throwable) {
-        // Ignore. Let the main listener handle it.
-    }
-
-    @Override
-    public void onError(int i, String s) {
-        // Ignore. Let the main listener handle it.
-    }
-
-    @Override
-    public void onErrorReset() {
-        // Ignore. Let the main listener handle it.
-    }
-
-    @Override
-    public void onInactiveExpiration() {
-        // Ignore. Let the main listener handle it.
-    }
-
-    @Override
-    public void onLowPowerNotification() {
-        // Ignore. Let the main listener handle it.
-    }
-
-    @Override
-    public void onChange(String s, List<ChangeType> list) {
-        // Ignore. Let the main listener handle it.
-    }
-
-    @Override
-    public void onPropertyChange(String s, Property property) {
-        // Ignore. Let the main listener handle it.
-    }
-
-    @Override
-    public void onMessageRemoved(ChannelMessage channelMessage) {
-        // Ignore. Let the main listener handle it.
-    }
-
-    @Override
-    public void onMessageChange(ChannelMessage channelMessage) {
-        // Ignore. Let the main listener handle it.
-    }
-
-    @Override
-    public void onChannelHealthChange(String s, HealthType healthType, HealthType healthType1) {
-        // Ignore. Let the main listener handle it.
-    }
-
-    @Override
-    public void onInternetActive(boolean b) {
-        // Ignore. Let the main listener handle it.
-    }
-
-    @Override
-    public void onDatapointChange(Datapoint datapoint) {
-        // Ignore. Let the main listener handle it.
-    }
-
-    @Override
-    public void onMemberProfileChange(Member member) {
-        // If the members profile image is used, then re-render the marker
-    }
-
-    @Override
-    public void onMemberStatusChange(Member member) {
-        // Render a different marker to reflect the status of the member in the channel.
-    }
-
-    @Override
-    public void onMemberPresenceChange(Member member) {
-        // Render a different marker to reflect the presence of the member in the channel. If they left the channel,
-        // then remove them from the map
-        if ( member.getState().equals(MemberStateType.LEFT) ) {
-            Marker marker = memberMarkers.get(member.getDeviceID());
-            if ( marker != null ) {
-                marker.remove();;
-            }
-        }
-    }
-
-    @Override
-    public void onMemberLocationChange(Member member, NucleusLocation nucleusLocation) {
-        Marker marker = memberMarkers.get(member.getDeviceID());
-        if ( marker != null ) {
-            marker.remove();;
-        }
-        marker = makeMemberMarker(member);
-        memberMarkers.put(member.getDeviceID(), marker);
     }
 
     @Override
