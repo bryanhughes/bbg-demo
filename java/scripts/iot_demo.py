@@ -72,10 +72,8 @@ def main():
             else:
                 lng = gps.decimal_degrees(float(lng1))
 
-            logger.info("[iot_demo] lat >>>" + str(int(float(lat1))))
-            logger.info("[iot_demo] lng >>>" + str(int(float(lng1))))
-
             if (lat0 != lat1) and (lng0 != lng1) and (sats0 != sats1):
+                display.set_latlng(lat, lng)
                 gps_str = t + "," + str(lat) + "," + str(lng) + "," + fix + "," + sats1 + "," + alt
                 gps_file = open(GPS_FILENAME, "w")
                 gps_file.write(gps_str)
@@ -100,6 +98,7 @@ def main():
         change_flag = False
         if (humidity0 != humidity1) or (temperature0 != temperature1) or (axes0 != axes1):
             # We will open the file and overwrite it on every write...
+            display.set_temphumidity(temperature1, humidity1)
             sensor_file = open(SENSOR_FILENAME, "w")
             sensor_file.write('{0:0d},{1:0.1f},{2:0.1f},{3:0d},{4:0.4f},{5:0.4f},{6:0.4f}'.format(int(counter),
                                                                                                   temperature1,
@@ -116,8 +115,6 @@ def main():
         temperature0 = temperature1
         axes0 = axes1
 
-        display.setValues(temperature0, humidity0, lat0, lng0)
-
         delta = datetime.datetime.now() - stime
         run_time = int(delta.total_seconds() * 1000)
         total_time = total_time + run_time
@@ -125,17 +122,22 @@ def main():
 
         if change_flag:
             logger.info("[iot_demo] {0:d} : Temp={1:0.1f}*, Humidity={2:0.1f}%, "
-                        "Accel={3:0.4f}, {4:0.4f}, {5:0.4f} - Took {6:0.3f}ms / Avg {7:0.3f}ms".format(counter,
-                                                                                                       temperature1,
-                                                                                                       humidity1,
-                                                                                                       axes1['x'],
-                                                                                                       axes1['y'],
-                                                                                                       axes1['z'],
-                                                                                                       run_time,
-                                                                                                       avg_time))
+                        "Accel={3:0.4f}, {4:0.4f}, {5:0.4f} - Took {6:0.3f}ms / "
+                        "Avg {7:0.3f}ms / Total  {8:0.3f}ms".format(counter,
+                                                                    temperature1,
+                                                                    humidity1,
+                                                                    axes1['x'],
+                                                                    axes1['y'],
+                                                                    axes1['z'],
+                                                                    run_time,
+                                                                    avg_time,
+                                                                    total_time))
         else:
-            logger.info("[iot_demo] {0:d} : No change - Took {1:0.3f} ms / Avg {2:0.3f}ms".format(counter,
-                                                                                                  run_time, avg_time))
+            logger.info("[iot_demo] {0:d} : No change - Took {1:0.3f} ms / "
+                        "Avg {2:0.3f}ms / Total  {3:0.3f}ms".format(counter,
+                                                                    run_time,
+                                                                    avg_time,
+                                                                    total_time))
 
 
 if __name__ == "__main__":

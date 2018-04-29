@@ -11,6 +11,7 @@ import thread
 
 LED_FILENAME = "/tmp/led.dat"
 
+
 def led_loop():
     rgb_led = grove_led.ChainableLED(grove_led.CLK_PIN, grove_led.DATA_PIN, grove_led.NUMBER_OF_LEDS)
     rgb_led.setColorRGB(0, 255, 255, 255)

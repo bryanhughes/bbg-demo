@@ -7,6 +7,7 @@ import grove_oled
 
 MESSAGE_FILENAME = "/tmp/message.dat"
 
+
 class OLEDDisplay:
     def __init__(self):
         fmt = '%(asctime)-15s %(message)s'
@@ -24,9 +25,11 @@ class OLEDDisplay:
         self.lat = 0.0
         self.lng = 0.0
 
-    def setValues(self, temp, humidity, lat, lng):
+    def set_temphumidity(self, temp, humidity):
         self.temp = temp
         self.humidity = humidity
+
+    def set_latlng(self, lat, lng):
         self.lat = lat
         self.lng = lng
 
@@ -34,25 +37,17 @@ class OLEDDisplay:
         try:
             message_file = open(MESSAGE_FILENAME, "r")
         except IOError:
-            self.displayValues()
+            self.display_values()
         else:
             message = message_file.readline()
             self.logger.info("[iot_display] message = %s", message)
             message_file.close()
             os.remove(MESSAGE_FILENAME)
-            self.displayMessage(message)
+            self.display_message(message)
             time.sleep(10)
 
-    def displayValues(self):
-        if str(self.lat).find(".") == 3:
-            latCol = 0
-        else:
-            latCol = 1
+    def display_values(self):
 
-        if str(self.lng).find('.') == 3:
-            lngCol = 0
-        else:
-            lngCol = 1
 
         self.logger.info("[iot_display] lat = %s, lng = %s", self.lat, self.lng)
 
@@ -62,13 +57,13 @@ class OLEDDisplay:
         grove_oled.oled_putString('Hum: {0:0.1f}%'.format(self.humidity))
         grove_oled.oled_setTextXY(2, 0)
         grove_oled.oled_putString("            ")
-        grove_oled.oled_setTextXY(3, latCol)
-        grove_oled.oled_putString('{:>3.6f}'.format(self.lat))
-        grove_oled.oled_setTextXY(4, lngCol)
-        grove_oled.oled_putString('{:>3.6f}'.format(self.lng))
+        grove_oled.oled_setTextXY(3, 0)
+        grove_oled.oled_putString('%11.6f' % self.lat)
+        grove_oled.oled_setTextXY(4, 0)
+        grove_oled.oled_putString('%11.6f' % self.lng)
         self.pulse()
 
-    def displayMessage(self, message):
+    def display_message(self, message):
         grove_oled.oled_clearDisplay()
         grove_oled.oled_setTextXY(0, 0)
         grove_oled.oled_putString("            ")
