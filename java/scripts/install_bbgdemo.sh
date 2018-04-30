@@ -19,5 +19,11 @@ echo ""
 echo "Installing rc.local so relay and bridge start on boot..."
 cp rc.local /etc
 
+echo ""
+echo "Installing crontab to keep logs from filling up device..."
+echo sudo "0 0 * * * root bash /home/debian/bbgdemo/remove_old_logs.sh" > /etc/cron.d/bbgdemo.sh
+
+echo ""
+echo "Done"
 
 
