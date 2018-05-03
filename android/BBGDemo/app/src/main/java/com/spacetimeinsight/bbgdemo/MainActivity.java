@@ -14,8 +14,10 @@ import android.support.design.widget.BottomNavigationView;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AlertDialog;
 import android.util.Log;
+import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
@@ -209,6 +211,9 @@ public class MainActivity extends Activity {
             EditText messageText = findViewById(R.id.messageText);
             final String message = messageText.getText().toString();
 
+            ProgressBar progressBar = findViewById(R.id.progressSpinner);
+            progressBar.setVisibility(View.VISIBLE);
+
             Channel channel = nucleusService.getCurrentChannel();
             if ( channel == null ) {
                 BBGDemoApplication app1 = (BBGDemoApplication) getApplication();
@@ -219,6 +224,7 @@ public class MainActivity extends Activity {
                     @Override
                     public void onSuccess() {
                         Log.i(LOG_TAG, "Successfully set channel property - " + message);
+                        progressBar.setVisibility(View.INVISIBLE);
                     }
 
                     @Override
@@ -226,6 +232,7 @@ public class MainActivity extends Activity {
                                           boolean retryable) {
                         Log.e(LOG_TAG, "Failed to set channel property - " + message + ". " + operationStatus + " (" +
                                 statusCode + ") - " + errorMsg);
+                        progressBar.setVisibility(View.INVISIBLE);
                     }
                 });
             }

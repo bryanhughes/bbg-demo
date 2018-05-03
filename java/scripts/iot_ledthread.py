@@ -4,8 +4,6 @@ import logging
 import os
 import traceback
 
-import time
-
 import grove_led
 import thread
 
@@ -32,13 +30,14 @@ def led_loop():
             led_values = led_file.readline()
             led_file.close()
             os.remove(LED_FILENAME)
-            time.sleep(2)
+
+            logger.info("[iot_ledthread] led_values = %s", led_values)
 
             parts = [x.strip() for x in led_values.split(',')]
-            logger.info("[iot_ledthread] led_values = [{}, {}, {}] - len = {}".format(int(parts[0]),
-                                                                                      int(parts[1]),
-                                                                                      int(parts[2]),
-                                                                                      len(parts)))
+            logger.info("[iot_ledthread] led_values = [{0:0d}, {1:0d}, {2:0d}] - len = {3:0d}".format(int(parts[0]),
+                                                                                                      int(parts[1]),
+                                                                                                      int(parts[2]),
+                                                                                                      len(parts)))
             rgb_led.setColorRGB(0, int(parts[0]), int(parts[1]), int(parts[2]))
 
 

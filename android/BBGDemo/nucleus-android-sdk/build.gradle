@@ -1,2 +1,2 @@
 configurations.maybeCreate("default")
-artifacts.add("default", file('nucleus-android-sdk-2.1.1-debug.aar'))
+artifacts.add("default", file('nucleus-android-sdk-2.1.2-debug.aar'))

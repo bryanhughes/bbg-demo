@@ -136,7 +136,7 @@ public class BeagleBone
                                                           osVersion, os, cachedLocation);
 
         // We only want minimal caching
-        CachePolicy cachePolicy = new CachePolicy(100, CachePolicy.DEFAULT_EXPIRY, 1024);
+        CachePolicy cachePolicy = new CachePolicy(100, CachePolicy.DEFAULT_EXPIRY, 1024, (60 * 24));
 
         nucleusClient = new NucleusClient(device, apiAccountID, apiAccountToken, userDir, cachePolicy);
         nucleusClient.setServerTarget("http", SERVER_URL, SERVER_PORT);

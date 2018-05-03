@@ -93,8 +93,7 @@ public class ChatActivity extends AppCompatActivity {
      *
      * @param mimeMessage the message to publish
      */
-    private void publishMessage(final MimeMessageProto.MimeMessage mimeMessage)
-            throws IOException {
+    private void publishMessage(final MimeMessageProto.MimeMessage mimeMessage) throws IOException {
         NucleusService nucleusService = BBGDemoApplication.getNucleusService();
         ChannelService channelService = nucleusService.getChannelService();
         String channelRef = nucleusService.getCurrentChannelRef();
@@ -110,11 +109,13 @@ public class ChatActivity extends AppCompatActivity {
                                        @Override
                                        public void onFailure(OperationStatus operationStatus, int statusCode,
                                                              String errorMessage, boolean retryable) {
-                                           BBGDemoApplication app = (BBGDemoApplication) getApplication();
-                                           app.showAlert("Error", "Failed to publish message");
+                                           if ( nucleusService.getErrorCount() == 1 ) {
+                                               BBGDemoApplication app = (BBGDemoApplication) getApplication();
+                                               app.showAlert("Error", "Failed to publish message. " +
+                                                             (retryable ? " Will keep retrying." : ""));
+                                           }
                                            Log.e(LOG_TAG, "Failed to publish message - " + operationStatus +
-                                                          "(" + statusCode + ") " +
-                                                          errorMessage);
+                                                          "(" + statusCode + ") " + errorMessage);
                                        }
 
                                        @Override

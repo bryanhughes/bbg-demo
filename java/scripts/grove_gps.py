@@ -21,7 +21,8 @@ class GPS():
                 break
             time.sleep(0.1)
         try:
-            ind = GPS.inp.index('$GPGGA', 5, len(GPS.inp))  # Sometimes multiple GPS data packets come into the stream. Take the data only after the last '$GPGGA' is seen
+            ind = GPS.inp.index('$GPGGA', 5, len(
+                GPS.inp))  # Sometimes multiple GPS data packets come into the stream. Take the data only after the last '$GPGGA' is seen
             GPS.inp = GPS.inp[ind:]
         except ValueError:
             pass
@@ -44,6 +45,7 @@ class GPS():
         degrees = float(raw_degrees) // 100
         d = float(raw_degrees) % 100 / 60
         return degrees + d
+
 
 if __name__ == '__main__':
     g = GPS()

@@ -26,6 +26,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import com.spacetimeinsight.bbgdemo.BBGDemoApplication;
@@ -126,6 +127,14 @@ public class ChatArrayAdapter extends ArrayAdapter<ChannelMessage> {
             TextView screenName = row.findViewById(R.id.chatSenderName);
             TextView timestamp = row.findViewById(R.id.chatTimestampField);
             TextView idField = row.findViewById(R.id.chatMessageID);
+            ProgressBar progressBar = row.findViewById(R.id.chatProgressSpinner);
+
+            if ( message.isInFlight() ) {
+                progressBar.setVisibility(View.VISIBLE);
+            }
+            else {
+                progressBar.setVisibility(View.INVISIBLE);
+            }
 
             String deviceID = message.getSenderID();
 

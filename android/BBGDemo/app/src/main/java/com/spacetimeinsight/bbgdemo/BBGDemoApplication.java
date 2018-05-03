@@ -180,7 +180,6 @@ public class BBGDemoApplication extends Application {
                                 System.out.println("Member=" + member);
 
                                 if ( message.getMessageType().equals(MessageType.MTMimeMessage) ) {
-                                    chatArrayAdapter.add(message);
                                     chatArrayAdapter.notifyDataSetChanged();
                                 }
                             }
@@ -593,7 +592,7 @@ public class BBGDemoApplication extends Application {
     void joinChannel(final String channelRef) {
         final ChannelService channelService = nucleusService.getChannelService();
 
-        Map<JoinOption, Object> joinOptions = JoinOption.getLastNChanges(1);
+        Map<JoinOption, Object> joinOptions = JoinOption.getChangesSinceLastOffset();
         joinOptions.put(JoinOption.INCLUDE_TELEMETRY, true);
 
         final long stime = System.currentTimeMillis();
@@ -649,9 +648,9 @@ public class BBGDemoApplication extends Application {
             String valueStr = property.getValue();
             String[] parts = valueStr.split(",");
             if ( parts.length == 3 ) {
-                redLED = Integer.parseInt(parts[0]);
-                greenLED = Integer.parseInt(parts[1]);
-                blueLED = Integer.parseInt(parts[2]);
+                redLED = Integer.parseInt(parts[0].trim());
+                greenLED = Integer.parseInt(parts[1].trim());
+                blueLED = Integer.parseInt(parts[2].trim());
 
                 Log.i(LOG_TAG, "Broadcasting property change " + redLED + ", " + greenLED + ", " + blueLED);
 
