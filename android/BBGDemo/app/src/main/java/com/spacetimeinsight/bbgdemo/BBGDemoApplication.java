@@ -15,6 +15,8 @@ import android.net.Uri;
 import android.os.IBinder;
 import android.support.v7.app.AlertDialog;
 import android.util.Log;
+import android.view.View;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import com.spacetimeinsight.bbgdemo.chat.ChatActivity;
@@ -92,15 +94,13 @@ public class BBGDemoApplication extends Application {
 
     private GeoCircle myLocation = new GeoCircle(37.751685, -122.447621, 100);
     private String channelName = "bbgdemo01";
-    private String shortDescription = "BBG Demo";
-    private String longDescription = "2020 Third Street, San Francisco, CA";
     private ChatArrayAdapter chatArrayAdapter;
     private boolean isDisplaying502Alert = false;
+    private ProgressBar progressSpinner;
 
     @Override
     public void onCreate() {
         super.onCreate();
-
         NucleusService.bind(getApplicationContext(), Config.API_ACCOUNTID, Config.API_ACCOUNTTOKEN, "BBGDemo",
                             new ServiceConnection(){
                     public void onServiceConnected(ComponentName className, IBinder service) {
@@ -464,7 +464,7 @@ public class BBGDemoApplication extends Application {
     private DeviceSessionResponseHandler deviceSessionResponseHandler = new DeviceSessionResponseHandler() {
         @Override
         public void onSuccess(boolean needsProfile, List<String> activeMemberships) {
-            Log.i("Device Service Success", "needsprofile " + needsProfile);
+            Log.i("Device Service Success", "needs profile " + needsProfile);
             if ( needsProfile && (currentActivity != null) ) {
                 Context context = getApplicationContext();
                 Intent intent = new Intent(context, ProfileActivity.class);
@@ -532,7 +532,8 @@ public class BBGDemoApplication extends Application {
         }
     };
 
-    public void startSession() {
+    public void startSession(ProgressBar progressSpinner) {
+        this.progressSpinner = progressSpinner;
         nucleusService.getDeviceService().startSession(deviceSessionResponseHandler);
     }
 
@@ -569,6 +570,8 @@ public class BBGDemoApplication extends Application {
 
     private void createChannel() {
         final ChannelService channelService = nucleusService.getChannelService();
+        String shortDescription = "BBG Demo";
+        String longDescription = "2020 Third Street, San Francisco, CA";
         channelService.createChannel(myLocation, -1, -1, channelName, null, "Site", false, "Site",
                                      null, shortDescription, longDescription, new ChannelCreateResponseHandler() {
                     @Override
@@ -600,6 +603,9 @@ public class BBGDemoApplication extends Application {
             @Override
             public void onFailure(OperationStatus operationStatus, int statusCode, String errorMessage,
                                   boolean retryable) {
+                if ( progressSpinner != null ) {
+                    progressSpinner.setVisibility(View.INVISIBLE);
+                }
                 Log.e(LOG_TAG, "Failed to join channel. channelRef=" + channelRef +
                                            " : " + operationStatus + " : statusCode = " +
                                            statusCode + " : errorMessage = " + errorMessage);
@@ -611,12 +617,21 @@ public class BBGDemoApplication extends Application {
                     channelService.switchChannel(channelRef, new GeneralResponseHandler() {
                         @Override
                         public void onSuccess() {
+                            if ( progressSpinner != null ) {
+                                progressSpinner.setVisibility(View.INVISIBLE);
+                            }
+
                             Log.i(LOG_TAG, "Took " + (System.currentTimeMillis() - stime) + "ms to join channel " + channelRef);
 
                             // Make sure we set our initial state!
 
                             Channel channel = nucleusService.getChannel(channelRef);
                             Property property = channel.getProperty("led");
+                            if ( property != null ) {
+                                setProperty(property);
+                            }
+
+                            property = channel.getProperty("display");
                             if ( property != null ) {
                                 setProperty(property);
                             }
@@ -656,12 +671,22 @@ public class BBGDemoApplication extends Application {
 
                 Intent broadcast = new Intent();
                 broadcast.setAction(BROADCAST_PROPERTY_ACTION);
+                broadcast.putExtra("type", "led");
                 broadcast.putExtra("red", redLED);
                 broadcast.putExtra("green", greenLED);
                 broadcast.putExtra("blue", blueLED);
 
                 sendBroadcast(broadcast);
             }
+        }
+        else if ( property.getName().equals("display") ) {
+            String valueStr = property.getValue();
+            Intent broadcast = new Intent();
+            broadcast.setAction(BROADCAST_PROPERTY_ACTION);
+            broadcast.putExtra("type", "display");
+            broadcast.putExtra("message", valueStr);
+
+            sendBroadcast(broadcast);
         }
     }
 

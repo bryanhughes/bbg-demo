@@ -127,7 +127,7 @@ public class CreatePartitionActivity extends AppCompatActivity {
         try {
             nucleusService.setActivePartition(apiKey, apiToken);
             finish();
-            app.startSession();
+            app.startSession(null);
         }
         catch ( IOException e ) {
             e.printStackTrace();

@@ -25,7 +25,6 @@ import com.spacetimeinsight.bbgdemo.chat.ChatActivity;
 import com.spacetimeinsight.bbgdemo.map.MapsActivity;
 import com.spacetimeinsight.nucleus.android.NucleusService;
 import com.spacetimeinsight.nucleuslib.Channel;
-import com.spacetimeinsight.nucleuslib.NucleusException;
 import com.spacetimeinsight.nucleuslib.responsehandlers.GeneralResponseHandler;
 import com.spacetimeinsight.nucleuslib.types.OperationStatus;
 
@@ -51,6 +50,10 @@ public class MainActivity extends Activity {
     private TextView tView;
     private TextView tsView;
     private TextView aView;
+
+    private TextView displayMessage;
+
+    private ProgressBar progressSpinner;
 
     private BottomNavigationView.OnNavigationItemSelectedListener mOnNavigationItemSelectedListener = item -> {
                 Intent intent;
@@ -86,13 +89,20 @@ public class MainActivity extends Activity {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (Objects.equals(intent.getAction(), BBGDemoApplication.BROADCAST_PROPERTY_ACTION)) {
-                int rVal = intent.getIntExtra("red", 0);
-                int gVal = intent.getIntExtra("green", 0);
-                int bVal = intent.getIntExtra("blue", 0);
+                String type = intent.getStringExtra("type");
+                if ( "led".equals(type) ) {
+                    int rVal = intent.getIntExtra("red", 0);
+                    int gVal = intent.getIntExtra("green", 0);
+                    int bVal = intent.getIntExtra("blue", 0);
 
-                redBar.setProgress(rVal);
-                greenBar.setProgress(gVal);
-                blueBar.setProgress(bVal);
+                    redBar.setProgress(rVal);
+                    greenBar.setProgress(gVal);
+                    blueBar.setProgress(bVal);
+                }
+                else if ( "display".equals(type) ) {
+                    String message = intent.getStringExtra("message");
+                    displayMessage.setText(message);
+                }
             }
             else if (Objects.equals(intent.getAction(), BBGDemoApplication.BROADCAST_SENSOR_ACTION)) {
                 double h = intent.getDoubleExtra("h", 0);
@@ -132,10 +142,11 @@ public class MainActivity extends Activity {
                     if ( apiKey.isEmpty() ) {
                         i = new Intent(getApplicationContext(), CreatePartitionActivity.class);
                         i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                        progressSpinner.setVisibility(View.INVISIBLE);
                         startActivity(i);
                     }
                     else {
-                        app.startSession();
+                        app.startSession(progressSpinner);
                     }
                 }
                 catch (IOException e) {
@@ -197,6 +208,9 @@ public class MainActivity extends Activity {
         BBGDemoApplication app = (BBGDemoApplication) getApplication();
         app.setCurrentActivity(this);
 
+        displayMessage = findViewById(R.id.displayMessage);
+        progressSpinner = findViewById(R.id.progressSpinner);
+
         redBar = findViewById(R.id.redSeekBar);
         greenBar = findViewById(R.id.greenSeekBar);
         blueBar = findViewById(R.id.blueSeekBar);
@@ -211,8 +225,7 @@ public class MainActivity extends Activity {
             EditText messageText = findViewById(R.id.messageText);
             final String message = messageText.getText().toString();
 
-            ProgressBar progressBar = findViewById(R.id.progressSpinner);
-            progressBar.setVisibility(View.VISIBLE);
+            progressSpinner.setVisibility(View.VISIBLE);
 
             Channel channel = nucleusService.getCurrentChannel();
             if ( channel == null ) {
@@ -224,7 +237,8 @@ public class MainActivity extends Activity {
                     @Override
                     public void onSuccess() {
                         Log.i(LOG_TAG, "Successfully set channel property - " + message);
-                        progressBar.setVisibility(View.INVISIBLE);
+                        progressSpinner.setVisibility(View.INVISIBLE);
+                        messageText.setText("");
                     }
 
                     @Override
@@ -232,7 +246,8 @@ public class MainActivity extends Activity {
                                           boolean retryable) {
                         Log.e(LOG_TAG, "Failed to set channel property - " + message + ". " + operationStatus + " (" +
                                 statusCode + ") - " + errorMsg);
-                        progressBar.setVisibility(View.INVISIBLE);
+                        progressSpinner.setVisibility(View.INVISIBLE);
+                        messageText.setText("");
                     }
                 });
             }
@@ -240,6 +255,7 @@ public class MainActivity extends Activity {
 
         Button shutdownButton = findViewById(R.id.shutdownButton);
         shutdownButton.setOnClickListener(v -> {
+            progressSpinner.setVisibility(View.VISIBLE);
             NucleusService nucleusService = BBGDemoApplication.getNucleusService();
             Channel channel = nucleusService.getCurrentChannel();
             if ( channel == null ) {
@@ -250,14 +266,16 @@ public class MainActivity extends Activity {
                 channel.setProperty("shutdown", "now", new GeneralResponseHandler() {
                     @Override
                     public void onSuccess() {
+                        progressSpinner.setVisibility(View.INVISIBLE);
                         BBGDemoApplication.showToast(getApplicationContext(), "Device will now shutdown");
                     }
 
                     @Override
                     public void onFailure(OperationStatus operationStatus, int statusCode, String errorMsg,
                                           boolean retryable) {
-                        Log.e(LOG_TAG, "Failed to set shutdown property. " + operationStatus + " : (" + statusCode + ") - " +
-                                errorMsg);
+                        progressSpinner.setVisibility(View.INVISIBLE);
+                        Log.e(LOG_TAG, "Failed to set shutdown property. " + operationStatus +
+                                " : (" + statusCode + ") - " + errorMsg);
                     }
                 });
             }

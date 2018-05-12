@@ -33,6 +33,10 @@ class Driver {
     static String osVersion;
     static String userDir;
 
+    static int capacity;
+    static int diskQuota;
+    static int sweepInterval;
+
     static {
         Properties localProperties = loadProperties();
         if ( localProperties == null ) {
@@ -86,6 +90,10 @@ class Driver {
 
         Driver.imageData = localProperties.getProperty("ProfileImage");
         Driver.imageType = localProperties.getProperty("ImageType");
+
+        Driver.capacity = Integer.valueOf(localProperties.getProperty("capacity", "100"));
+        Driver.diskQuota = Integer.valueOf(localProperties.getProperty("diskQuota", "1048576"));
+        Driver.sweepInterval = Integer.valueOf(localProperties.getProperty("sweepInterval", "60"));
     }
 
     private static Properties loadProperties() {
