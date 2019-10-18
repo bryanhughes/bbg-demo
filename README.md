@@ -2,6 +2,8 @@
 The Beaglebone Green Wireless is a fantastic piece of hardware that is extremely powerful. And now it's easier than ever 
 to work with because it comes pre-loaded with Debian!
 
+*NOTE* - The nucleus project was decommissioned by Nokia at the end of 2018. The sandbox server that supports this project is no longer functioning so this project will not work. It is left here for prosterity.
+
 ![bbg](docs/images/bbg.jpg)
 
 NOTE: This README assumes you are familiar with the Beaglebone Green Wireless.
