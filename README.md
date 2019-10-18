@@ -344,7 +344,7 @@ And add the following to the bottom of the file
 Once you have confirmed everything is in working order, CTRL-C out of each of the apps and reboot your device. Everything
 should start running
 
-![assembled_off_top_1](docs/images/assembled_on_top.jpg)
+![assembled_off_top_1](docs/images/aseembled_on_top.jpg)
 The assembled device running
 
     
