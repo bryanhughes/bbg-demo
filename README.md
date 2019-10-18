@@ -74,7 +74,7 @@ The Starter Kit
 ![image_1](docs/images/image_1.jpg) 
 The OLED Display and LED Chainable Sensor are part of the Starter Kit
 
-![assembled_off_top_1](docs/images/assembled_off_top_1.jpg)
+![assembled_off_top](docs/images/assembled_off_top.jpg)
 The assembled device top view
 
 ![assembled_off_rear](docs/images/assembled_off_rear.jpg)
